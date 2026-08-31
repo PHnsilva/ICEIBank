@@ -4,8 +4,14 @@ Projeto acadêmico de sistema bancário distribuído desenvolvido em Python com 
 
 > Estado atual: implementação incremental da Sprint 1 na branch `sprint1/desenvolvimento`, limitada às seções 1 a 10.
 
-O particionamento usa a regra `id_conta % 3`. As agências 0, 1 e 2 usam,
-respectivamente, as portas 4078, 4079 e 4080, definidas pelo deslocamento pessoal 78.
+O particionamento usa a regra `id_conta % 3`. O deslocamento pessoal 78 define o
+seguinte mapeamento:
+
+| Agência | Porta | URL |
+| ---: | ---: | --- |
+| 0 | 4078 | `http://localhost:4078` |
+| 1 | 4079 | `http://localhost:4079` |
+| 2 | 4080 | `http://localhost:4080` |
 
 ## Preparação no Windows PowerShell
 
@@ -63,6 +69,17 @@ eventos e identifica explicitamente timestamps empatados entre agências.
 
 ## Itens ainda pendentes da Sprint 1
 
-JWT, frontend web, funcionalidade adicional obrigatória, respostas e evidências
-restantes e a revisão final ainda não foram implementados. A branch de desenvolvimento
-permanece separada de `main` e será apresentada em um pull request draft, sem merge.
+- Autenticação JWT.
+- Frontend web.
+- Funcionalidade adicional obrigatória.
+- Respostas e evidências das seções restantes.
+- Checklist, revisão final e merge da Sprint 1.
+
+Nenhum desses itens é apresentado como implementado neste estágio.
+
+## Fluxo Git atual
+
+A branch estável `main` contém somente a estrutura inicial. O desenvolvimento das
+seções 1 a 10 está na branch atual `sprint1/desenvolvimento`, com cada etapa publicada
+incrementalmente. Essa branch é apresentada em um pull request draft para `main`, que
+deve permanecer aberto e sem merge até a conclusão real da Sprint 1.
