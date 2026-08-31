@@ -29,3 +29,32 @@
 
 Essa inconsistência é intencional na Sprint 1 e está prevista para tratamento apenas
 na Sprint 4; não há rollback, repetição automática, idempotência, 2PC ou Saga nesta etapa.
+
+## Seção 10 — Linha do tempo unificada
+
+### Observação real dos logs
+
+Na execução de 31 de agosto de 2026, foram observados três eventos independentes de
+criação de conta com o mesmo timestamp Lamport 1:
+
+| Agência | Evento | Timestamp Lamport | Hora de parede (UTC) |
+| --- | --- | ---: | --- |
+| `agencia-0` | `CRIAR_CONTA` da conta 0 | 1 | `2026-08-31T23:43:20.684728Z` |
+| `agencia-1` | `CRIAR_CONTA` da conta 1 | 1 | `2026-08-31T23:43:24.852321Z` |
+| `agencia-2` | `CRIAR_CONTA` da conta 2 | 1 | `2026-08-31T23:43:26.918822Z` |
+
+Essas criações foram feitas por requisições independentes e não houve mensagem entre
+as agências ligando os eventos; por isso, neste cenário observado, eles são concorrentes.
+O script marcou o empate e usou `horaParede` somente como critério secundário de
+apresentação. A ordem de parede Agência 0, Agência 1 e Agência 2 coincidiu com a ordem
+exibida. Essa coincidência não demonstra causalidade e dependeria de relógios físicos
+adequadamente sincronizados.
+
+### Seção 10.3 — Conclusões conceituais
+
+1. Timestamps Lamport diferentes, sozinhos, não provam que existe relação causal.
+2. O relógio de Lamport garante que, se um evento `a` causou um evento `b`, então
+   `L(a) < L(b)`. A recíproca não é garantida: `L(a) < L(b)` não prova que `a` causou `b`.
+3. Relógios de Lamport sozinhos não conseguem distinguir concorrência com certeza.
+4. Relógios vetoriais são motivados porque carregam informação por participante e
+   conseguem distinguir ordem causal de eventos concorrentes.

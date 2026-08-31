@@ -49,6 +49,18 @@ indisponível ou rejeitar o crédito, a API devolve HTTP 502 e registra
 etapa e será tratada somente na Sprint 4; ainda não existem 2PC, Saga, repetição,
 compensação ou idempotência.
 
+## Linha do tempo unificada
+
+Depois de executar operações nas agências, mescle todos os arquivos JSONL a partir da
+pasta `agencia`:
+
+```powershell
+python mesclar_logs.py
+```
+
+O script ordena primariamente pelo timestamp Lamport, mostra todos os campos dos
+eventos e identifica explicitamente timestamps empatados entre agências.
+
 ## Itens ainda pendentes da Sprint 1
 
 JWT, frontend web, funcionalidade adicional obrigatória, respostas e evidências
