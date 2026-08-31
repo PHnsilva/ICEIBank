@@ -1,6 +1,11 @@
-﻿# Node
-node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
 agencia/data/*.jsonl
-# Sistema
+.env
 Thumbs.db
 desktop.ini

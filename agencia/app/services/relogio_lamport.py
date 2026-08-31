@@ -1,0 +1,1 @@
+"""Relógio lógico de Lamport."""
