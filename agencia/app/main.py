@@ -3,12 +3,14 @@
 from pathlib import Path
 from typing import Any
 
+import httpx
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from .config import validar_agencia_id
 from .controllers.contas_controller import router as contas_router
+from .controllers.transferencias_controller import router as transferencias_router
 from .estado_agencia import EstadoAgencia
 from .services.registro_eventos import RegistroEventos
 from .services.relogio_lamport import RelogioLamport
@@ -31,7 +33,12 @@ def _mensagem_validacao(tipo: str) -> str:
     return mensagens.get(tipo, "Valor inválido.")
 
 
-def criar_aplicacao(agencia_id: int, diretorio_dados: Path | None = None) -> FastAPI:
+def criar_aplicacao(
+    agencia_id: int,
+    diretorio_dados: Path | None = None,
+    transporte_http: httpx.AsyncBaseTransport | None = None,
+    timeout_http: float = 3.0,
+) -> FastAPI:
     """Cria uma aplicação isolada para a agência informada."""
     agencia_id = validar_agencia_id(agencia_id)
     app = FastAPI(
@@ -43,6 +50,8 @@ def criar_aplicacao(agencia_id: int, diretorio_dados: Path | None = None) -> Fas
         agencia_id=agencia_id,
         relogio=RelogioLamport(),
         registro=RegistroEventos(agencia_id, diretorio_dados),
+        transporte_http=transporte_http,
+        timeout_http=timeout_http,
     )
 
     @app.exception_handler(RequestValidationError)
@@ -65,4 +74,5 @@ def criar_aplicacao(agencia_id: int, diretorio_dados: Path | None = None) -> Fas
         )
 
     app.include_router(contas_router)
+    app.include_router(transferencias_router)
     return app

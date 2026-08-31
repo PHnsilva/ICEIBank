@@ -35,5 +35,22 @@ suas contas, mas os logs JSONL já gravados permanecem no diretório `agencia/da
 - `GET /contas/{id}` — consulta uma conta da agência atual.
 - `POST /contas/{id}/depositar` — deposita com `{"valor": 25}`.
 - `POST /contas/{id}/sacar` — saca com `{"valor": 10}`.
+- `POST /transferencias` — transfere com `{"idOrigem": 0, "idDestino": 1, "valor": 30}`.
+- `POST /contas/{id}/creditar-remoto` — uso direto entre agências com
+  `{"valor": 30, "timestampLamport": 3, "origemAgencia": 0}`.
 
 Os valores monetários usam `Decimal` internamente e são devolvidos com duas casas decimais.
+
+## Limitação conhecida das transferências remotas
+
+A origem é debitada antes do contato HTTP com o destino. Se a agência remota estiver
+indisponível ou rejeitar o crédito, a API devolve HTTP 502 e registra
+`TRANSFERENCIA_FALHOU`, mas não restaura o débito. A inconsistência é intencional nesta
+etapa e será tratada somente na Sprint 4; ainda não existem 2PC, Saga, repetição,
+compensação ou idempotência.
+
+## Itens ainda pendentes da Sprint 1
+
+JWT, frontend web, funcionalidade adicional obrigatória, respostas e evidências
+restantes e a revisão final ainda não foram implementados. A branch de desenvolvimento
+permanece separada de `main` e será apresentada em um pull request draft, sem merge.

@@ -38,6 +38,26 @@ class OperacaoValor(EsquemaBase):
     valor: ValorPositivo
 
 
+class TransferenciaSolicitada(EsquemaBase):
+    """Dados de uma transferência iniciada pela agência da conta de origem."""
+
+    id_origem: IdConta = Field(alias="idOrigem")
+    id_destino: IdConta = Field(alias="idDestino")
+    valor: ValorPositivo
+
+
+class CreditoRemoto(EsquemaBase):
+    """Mensagem recebida diretamente de outra agência."""
+
+    valor: ValorPositivo
+    timestamp_lamport: Annotated[int, Field(strict=True, ge=0)] = Field(
+        alias="timestampLamport"
+    )
+    origem_agencia: Annotated[int, Field(strict=True, ge=0, le=2)] = Field(
+        alias="origemAgencia"
+    )
+
+
 class ContaSaida(EsquemaBase):
     """Representação pública de uma conta e seu saldo atual."""
 
