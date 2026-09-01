@@ -45,6 +45,11 @@ criação de conta com o mesmo timestamp Lamport 1:
 
 Essas criações foram feitas por requisições independentes e não houve mensagem entre
 as agências ligando os eventos; por isso, neste cenário observado, eles são concorrentes.
+Na captura final, a marca aparece como `[EMPATE x4]` porque a Agência 1 foi reiniciada
+durante o ensaio de indisponibilidade. O novo processo começou novamente em 0 e gravou
+outra `CRIAR_CONTA` com Lamport 1 às `2026-08-31T23:49:55.189275Z`. Esse evento posterior
+não faz parte do trio inicial usado na comparação acima.
+
 O script marcou o empate e usou `horaParede` somente como critério secundário de
 apresentação. A ordem de parede Agência 0, Agência 1 e Agência 2 coincidiu com a ordem
 exibida. Essa coincidência não demonstra causalidade e dependeria de relógios físicos
