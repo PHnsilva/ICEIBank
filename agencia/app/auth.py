@@ -10,6 +10,7 @@ from typing import Annotated
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 from pwdlib import PasswordHash
@@ -100,6 +101,8 @@ async def agencia_autenticada(
     claims = validar_token(credencial.credentials, request.app.state.auth.segredo_agencias,
                            f"agencia-{estado.agencia_id}")
     corpo = await request.json()
+    if not isinstance(corpo, dict):
+        raise erro_401("Credencial da agência não corresponde à mensagem.")
     origem = corpo.get("origemAgencia")
     if (type(origem) is not int or origem not in range(3) or origem == estado.agencia_id
             or claims.get("tipo") != "agencia" or claims["sub"] != f"agencia-{origem}"
@@ -122,7 +125,6 @@ def login(dados: Login, request: Request):
         raise erro_401("Usuário ou senha inválidos.")
     token = emitir_token(config.segredo_usuario, config.usuario, "iceibank-api",
                          config.validade_segundos, tipo="usuario")
-    from fastapi.responses import JSONResponse
     return JSONResponse({"access_token": token, "token_type": "bearer",
                          "expires_in": config.validade_segundos},
                         headers={"Cache-Control": "no-store", "Pragma": "no-cache"})

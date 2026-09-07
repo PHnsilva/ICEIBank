@@ -18,6 +18,7 @@ def entrar(c):
 
 @pytest.mark.parametrize("metodo,rota,corpo", [
     ("GET", "/contas/0", None), ("POST", "/contas", {}),
+    ("GET", "/contas/0/historico", None),
     ("POST", "/contas/0/depositar", {"valor": 1}),
     ("POST", "/contas/0/sacar", {"valor": 1}),
     ("POST", "/transferencias", {}),
@@ -93,3 +94,10 @@ def test_configuracao_sem_segredos_falha(monkeypatch):
     monkeypatch.delenv("JWT_SECRET")
     with pytest.raises(ValueError, match="Configure"):
         ConfiguracaoAuth.do_ambiente()
+
+
+def test_mensagem_agencia_corpo_nao_objeto_retorna_401(cliente):
+    token = emitir_token(cliente.app.state.auth.segredo_agencias, "agencia-1", "agencia-0", 30, tipo="agencia")
+    r = cliente.post("/contas/0/creditar-remoto", json=[], headers={"Authorization": "Bearer " + token})
+    assert r.status_code == 401
+    assert cliente.app.state.estado_agencia.relogio.valor == 0

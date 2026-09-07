@@ -166,3 +166,29 @@ Testes em `agencia/tests/test_historico.py` cobrem isolamento, paginação, auto
 rejeições, crédito remoto, falha remota e reinício. O teste de navegador
 `test_historico_conta_com_endpoint_real` usa as três agências reais e produz
 `evidencias/sprint1/funcionalidade-adicional.png`.
+
+## Revisão final e compatibilidade com as seções 1–10
+
+A revisão identificou que uma transferência para destino **local** inexistente já
+restaurava o saldo, mas deixava somente o evento de débito no log. Foi acrescentado
+`ESTORNO_LOCAL` com saldo restaurado para que o novo histórico seja fiel ao estado.
+O status 404 e o saldo final permanecem iguais; a falha **remota** continua sem
+restauração, como exigido na Sprint 1. Não foi introduzida compensação distribuída.
+
+Também foi impedido que uma resposta atrasada repopule a conta após a sessão
+expirar, e mensagens de agência com corpo não-objeto passam a ser rejeitadas com
+401 antes do relógio. Os testes incluem falha remota real na interface (502 e
+saldo debitado) e expiração durante uma consulta. Para o timer de frontend, o teste
+avança somente o relógio do navegador; a evidência JWT expirado usa espera real.
+
+O checklist operacional está em `CHECKLIST_SPRINT1.md` e o método das capturas em
+`evidencias/sprint1/README.md`. O enunciado original da disciplina não está presente
+no repositório; as respostas acima cobrem os requisitos fornecidos na solicitação
+de continuação. O vídeo de apresentação foi expressamente excluído desta entrega.
+
+Verificação final de 07/09/2026: **99 testes passaram**, sendo 90 de backend e 9 de
+navegador. O ciclo real pelas três agências foi confirmado pelas APIs, com saldo
+total final de R$ 415,00. Saída, datas e saldos estão em
+`evidencias/sprint1/verificacao.txt` e `evidencias/sprint1/fluxo-tres-agencias.json`.
+Permanece um aviso de depreciação do TestClient/Starlette já presente na base;
+nenhum teste falhou. As sete novas capturas foram conferidas visualmente.

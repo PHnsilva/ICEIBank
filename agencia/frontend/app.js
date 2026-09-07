@@ -30,6 +30,7 @@ function sair() {
   $("#login-form").reset();
 }
 async function api(caminho, corpo) {
+  const tokenDaRequisicao = token;
   const base = agencias.find((item) => item.id === Number(agencia.value)).url;
   let resposta;
   try {
@@ -44,6 +45,9 @@ async function api(caminho, corpo) {
     throw new Error("Não foi possível comunicar com a agência selecionada. Verifique se ela está em execução. Se enviou uma operação, consulte o saldo antes de tentar novamente.");
   }
   const dados = await resposta.json();
+  if (tokenDaRequisicao && tokenDaRequisicao !== token) {
+    throw new Error("Sessão encerrada. Faça login novamente.");
+  }
   if (!resposta.ok) {
     if (resposta.status === 401) sair();
     const campos = (dados.erros || []).map((e) => `${e.campo}: ${e.mensagem}`).join(" ");

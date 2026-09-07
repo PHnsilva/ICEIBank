@@ -63,8 +63,10 @@ existentes das seções 6.4, 8.3 e 10 foram preservadas.
 - [x] Testes cobrem erros e mantêm explícita a inconsistência da Sprint 1.
 - [x] Evidências de navegador são screenshots reais sem composição/edição.
 - [x] Evidências anteriores de terminal preservadas; data registrada na verificação.
-- [ ] Verificação consolidada final registrada em `evidencias/sprint1/verificacao.txt`.
-- [ ] Commits finais publicados e PR atualizado após a revisão.
+- [x] Verificação consolidada final registrada em `evidencias/sprint1/verificacao.txt`: 99 testes passaram (90 backend, 9 navegador), em 07/09/2026.
+- [x] Commits finais publicados e PR atualizado após a revisão.
 - [ ] Vídeo de apresentação — **excluído do escopo por solicitação**.
 
 Não executar merge em `main` nesta entrega.
+O PR permanece em draft enquanto o vídeo estiver pendente; a condição de concluir
+a Sprint integralmente antes de marcar pronto foi preservada.

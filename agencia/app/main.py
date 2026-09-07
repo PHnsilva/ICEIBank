@@ -84,8 +84,9 @@ def criar_aplicacao(
         )
 
     app.include_router(auth_router)
-    app.include_router(contas_router, dependencies=[Depends(usuario_autenticado)])
-    app.include_router(transferencias_router)
+    resposta_401 = {401: {"description": "Token ausente, inválido, expirado ou inadequado à operação."}}
+    app.include_router(contas_router, dependencies=[Depends(usuario_autenticado)], responses=resposta_401)
+    app.include_router(transferencias_router, responses=resposta_401)
 
     frontend = Path(__file__).resolve().parents[1] / "frontend"
     app.mount("/static", StaticFiles(directory=frontend), name="static")

@@ -53,3 +53,9 @@ Alguns testes adicionais de frontend simulam falha de rede/401 para conferir a
 recuperação da interface. Eles não produzem as capturas de autenticação e não
 substituem os testes HTTP reais. A suíte de backend também valida tokens expirados,
 assinaturas alteradas e mensagens de serviço inválidas.
+
+O teste do ciclo completo salva também [fluxo-tres-agencias.json](fluxo-tres-agencias.json)
+com os saldos e históricos devolvidos pelas APIs. O comando
+`./scripts/verificar_sprint1.ps1` salva a saída real de testes e `Get-Date` em
+[verificacao.txt](verificacao.txt). Os PNGs anteriores das seções 1–10 não são
+reescritos pelos testes.

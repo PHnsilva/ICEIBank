@@ -72,3 +72,14 @@ def test_saque_rejeitado_nao_cria_evento(tmp_path):
         criar(c, 0)
         assert c.post("/contas/0/sacar", json={"valor": "101.00"}).status_code == 400
         assert c.get("/contas/0/historico").json()["total"] == 1
+
+
+def test_destino_local_ausente_historico_reconcilia_saldo(tmp_path):
+    with cliente(tmp_path) as c:
+        criar(c, 0)
+        assert c.post("/transferencias", json={"idOrigem": 0, "idDestino": 3, "valor": "10.00"}).status_code == 404
+        h = c.get("/contas/0/historico").json()
+        assert h["saldoAtual"] == "100.00"
+        assert [e["tipo"] for e in h["eventos"]] == ["CRIAR_CONTA", "TRANSFERENCIA_DEBITO", "ESTORNO_LOCAL"]
+        assert h["eventos"][-1]["detalhes"]["saldo"] == h["saldoAtual"]
+        assert [e["timestampLamport"] for e in h["eventos"]] == [1, 2, 3]

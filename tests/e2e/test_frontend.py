@@ -1,5 +1,6 @@
 from pathlib import Path
-import re
+from datetime import datetime, timezone
+import json
 
 from playwright.sync_api import expect
 
@@ -30,7 +31,11 @@ def operar(page, operacao, valor, destino=None):
     page.locator("#operacao").select_option(operacao)
     if destino is not None: page.get_by_label("Conta de destino", exact=True).fill(str(destino))
     page.get_by_label("Valor (R$)", exact=True).fill(valor)
-    page.get_by_role("button", name="Confirmar operação").click()
+    confirmar = page.get_by_role("button", name="Confirmar operação")
+    confirmar.click()
+    # Uma mensagem de sucesso anterior pode ter o mesmo texto. Aguarde o término
+    # desta operação antes de conferir a API ou reutilizar controles.
+    expect(confirmar).to_be_enabled(timeout=15000)
 
 
 def test_login_e_erro_de_credenciais(page):
@@ -73,6 +78,11 @@ def test_fluxo_completo_tres_agencias(page, contas):
     operar(page, "remota", "5.00", id)
     expect(page.locator("#mensagem")).to_contain_text("Transferência entre agências realizada")
     assert [c.get(f"http://localhost:{4078+n%3}/contas/{n}").json()["saldo"] for n in (id, id+1, id+2, id+3)] == ["85.00", "110.00", "105.00", "115.00"]
+    historicos = [c.get(f"http://localhost:{4078+n%3}/contas/{n}/historico").json() for n in (id, id+1, id+2, id+3)]
+    (EVIDENCIAS / "fluxo-tres-agencias.json").write_text(json.dumps({
+        "verificadoEmUTC": datetime.now(timezone.utc).isoformat(),
+        "ciclo": "0 -> 1 -> 2 -> 0", "saldoTotalFinal": "415.00", "contas": historicos,
+    }, indent=2, ensure_ascii=False), encoding="utf-8")
     page.get_by_role("button", name="Sair da conta").click()
     expect(page.locator("#login-panel")).to_be_visible()
     assert not erros_js
@@ -147,3 +157,36 @@ def test_historico_conta_com_endpoint_real(page, contas):
     page.get_by_role("button", name="Consultar histórico").click()
     expect(page.locator("#historico-itens tr")).to_have_count(2)
     expect(page.locator("#historico-itens")).to_contain_text("Transferência local recebida")
+
+
+def test_falha_remota_real_mostra_502_e_debito_aplicado(page, contas):
+    id, c = contas
+    entrar(page)
+    consultar(page, id)
+    operar(page, "remota", "5.00", 999997)
+    expect(page.get_by_role("alert")).to_contain_text("HTTP 502")
+    expect(page.get_by_role("alert")).to_contain_text("não foi restaurado")
+    expect(page.locator("#saldo")).to_contain_text("95,00")
+    page.get_by_role("button", name="Consultar histórico").click()
+    expect(page.locator("#historico-itens")).to_contain_text("Transferência falhou · débito mantido")
+    assert c.get(f"http://localhost:4078/contas/{id}/historico").json()["saldoAtual"] == "95.00"
+
+
+def test_expiracao_durante_consulta_nao_restaura_dados_da_sessao(page, contas):
+    id, _ = contas
+    page.clock.install()
+    entrar(page)
+    consultar(page, id)
+
+    def resposta_tardia(route):
+        resposta = route.fetch()
+        # Avança apenas timers do navegador, mantendo a resposta real da API.
+        page.clock.fast_forward(900_001)
+        route.fulfill(response=resposta)
+
+    page.route(f"**/contas/{id}", resposta_tardia)
+    page.get_by_role("button", name="Consultar saldo").click()
+    expect(page.locator("#login-panel")).to_be_visible()
+    expect(page.locator("#mensagem")).to_contain_text("Sessão encerrada")
+    expect(page.locator("#saldo")).to_have_text("—")
+    expect(page.locator("#historico-itens tr")).to_have_count(0)

@@ -28,12 +28,13 @@ def main() -> None:
     load_dotenv(Path(__file__).resolve().parents[1] / ".env")
     try:
         agencia_id = obter_agencia_id()
+        app = criar_aplicacao(agencia_id)
     except ValueError as erro:
         raise SystemExit(f"Erro de configuração: {erro}") from None
 
     porta = porta_da_agencia(agencia_id)
     print(f"Iniciando Agência {agencia_id} em http://localhost:{porta}", flush=True)
-    uvicorn.run(criar_aplicacao(agencia_id), host="127.0.0.1", port=porta)
+    uvicorn.run(app, host="127.0.0.1", port=porta)
 
 
 if __name__ == "__main__":

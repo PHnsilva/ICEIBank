@@ -129,6 +129,11 @@ Get-Date
 python -m pytest agencia/tests tests/e2e -q
 ```
 
+Para também salvar a verificação com `Get-Date`, execute
+`./scripts/verificar_sprint1.ps1`. O relatório fica em
+`evidencias/sprint1/verificacao.txt`, e o teste do ciclo completo salva os saldos e
+históricos reais em `evidencias/sprint1/fluxo-tres-agencias.json`.
+
 Os testes de backend verificam regras monetárias, particionamento, logs, Lamport,
 JWT e histórico. Os testes Playwright executam no Chromium real e conferem saldos
 nas três APIs, erros, logout, sessão expirada, layout móvel e histórico.
@@ -144,5 +149,6 @@ requerem acesso à internet. O frontend bancário não depende desses assets.
 
 Commits separados para autenticação, frontend, histórico, evidências/documentação e
 correções finais na branch `sprint1/desenvolvimento`. O PR existente para `main`
-só sai de draft após a validação do escopo desta entrega; não há merge. O vídeo
-permanece explicitamente pendente e fora do trabalho solicitado.
+permanece em draft enquanto o vídeo estiver pendente, pois a condição solicitada
+para marcar pronto é a conclusão integral da Sprint. O vídeo está fora deste
+trabalho. Não há merge em `main`.

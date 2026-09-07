@@ -115,6 +115,14 @@ async def transferir(dados: TransferenciaSolicitada, request: Request) -> dict[s
             conta_destino = estado.contas.get(dados.id_destino)
             if conta_destino is None:
                 conta_origem.saldo += valor
+                # O log já contém o débito; registrar também sua restauração evita
+                # um histórico cujo último saldo contradiga o saldo real da conta.
+                timestamp_estorno = estado.relogio.evento_local()
+                estado.registro.registrar(
+                    "ESTORNO_LOCAL", timestamp_estorno,
+                    {"idConta": conta_origem.id, "idDestino": dados.id_destino,
+                     "valor": valor_formatado, "saldo": formatar_moeda(conta_origem.saldo)},
+                )
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=(
