@@ -44,7 +44,7 @@ def agencias(tmp_path_factory):
                     except httpx.TransportError: pass
                     if time.monotonic() > limite: pytest.fail(f"Agência {i} não iniciou; veja {pasta}")
                     time.sleep(.1)
-        yield {"env": env, "dados": pasta}
+        yield {"segredo_teste": env["JWT_SECRET"], "dados": pasta}
     finally:
         for p in processos: p.terminate()
         for p in processos: p.wait(timeout=10)
