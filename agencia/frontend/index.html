@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ICEIBank: operações bancárias entre três agências acadêmicas.">
+  <title>ICEIBank • Sua agência</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header><a class="brand" href="/">ICEI<span>Bank</span><span class="brand-dot">.</span></a><span class="tag">AMBIENTE ACADÊMICO</span></header>
+  <main>
+    <div class="topline"><div><p class="eyebrow">SUA AGÊNCIA, CONECTADA</p><h1>Olá. Vamos começar?</h1></div>
+      <label class="agency-label">Agência selecionada<select id="agencia" aria-label="Agência selecionada" disabled></select></label>
+    </div>
+    <div id="mensagem" role="status" aria-live="polite" hidden></div>
+    <section id="login-panel" class="login-grid">
+      <div class="intro"><div class="symbol" aria-hidden="true">↗</div><h2>Seu banco.<br>Três agências.<br>Uma conexão.</h2><p>Consulte sua conta, movimente seu saldo e acompanhe cada transação.</p><div class="network"><span>00</span><i></i><span>01</span><i></i><span>02</span></div></div>
+      <form id="login-form" class="card"><p class="eyebrow">ACESSO AO ICEIBANK</p><h2>Entre na sua conta</h2><p class="muted">Use suas credenciais de operador.</p>
+        <label>Usuário<input name="usuario" autocomplete="username" required maxlength="100"></label>
+        <label>Senha<input name="senha" type="password" autocomplete="current-password" required maxlength="1024"></label>
+        <button type="submit">Entrar <span aria-hidden="true">→</span></button><p class="footnote">Sua sessão é temporária. Ao terminar, use Sair.</p>
+      </form>
+    </section>
+    <section id="banco-panel" hidden>
+      <div class="session"><span id="sessao"></span><button id="sair" class="quiet" type="button">Sair da conta</button></div>
+      <div class="workspace">
+        <section class="card account"><p class="eyebrow">VISÃO DA CONTA</p><h2>Seu saldo</h2>
+          <form id="consulta-form"><label>Conta<input name="conta" id="conta" type="number" min="0" step="1" required placeholder="Ex.: 0"></label><button type="submit" class="secondary">Consultar saldo</button></form>
+          <p id="titular" class="muted">Selecione uma conta para consultar.</p><strong id="saldo" class="balance">—</strong>
+          <p class="footnote">A agência da conta é o resto da divisão do seu número por 3.</p>
+          <details><summary>Abrir conta de demonstração</summary><form id="criar-form">
+            <label>Número da nova conta<input name="id" type="number" min="0" step="1" required></label>
+            <label>Nome do titular<input name="nomeAluno" required maxlength="100"></label>
+            <label>Saldo inicial (R$)<input name="saldoInicial" type="number" min="0" step="0.01" required value="0.00"></label><button type="submit" class="secondary">Criar conta</button>
+          </form></details>
+        </section>
+        <section class="card operations"><p class="eyebrow">MOVIMENTAÇÕES</p><h2>O que deseja fazer?</h2>
+          <form id="operacao-form"><label>Operação<select name="operacao" id="operacao"><option value="depositar">Depósito</option><option value="sacar">Saque</option><option value="transferir">Transferência local</option><option value="remota">Transferência entre agências</option></select></label>
+            <div id="destino-fields" hidden><label>Conta de destino<input name="destino" type="number" min="0" step="1"></label><p id="destino-agencia" class="footnote">Informe o destino para identificar a agência.</p></div>
+            <label>Valor (R$)<input name="valor" type="number" min="0.01" step="0.01" placeholder="0,00" required></label>
+            <p class="muted" id="origem-info">Consulte a conta antes de movimentar.</p><button id="confirmar" type="submit">Confirmar operação <span aria-hidden="true">↗</span></button>
+          </form>
+        </section>
+      </div>
+    </section>
+  </main>
+  <footer><span>ICEIBank / Sprint 1</span><span>Banco distribuído • 3 agências</span></footer>
+</body>
+</html>

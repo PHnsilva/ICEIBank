@@ -7,8 +7,11 @@ import httpx
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
-from .config import validar_agencia_id
+from .config import URLS_AGENCIAS, PORTAS_AGENCIAS, validar_agencia_id
 from .auth import ConfiguracaoAuth, router as auth_router, usuario_autenticado
 from .controllers.contas_controller import router as contas_router
 from .controllers.transferencias_controller import router as transferencias_router
@@ -48,6 +51,11 @@ def criar_aplicacao(
         description="Sistema bancário distribuído acadêmico — Sprint 1.",
     )
     app.state.auth = ConfiguracaoAuth.do_ambiente()
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[*URLS_AGENCIAS, *[f"http://127.0.0.1:{p}" for p in PORTAS_AGENCIAS]],
+        allow_methods=["GET", "POST"], allow_headers=["Authorization", "Content-Type"],
+    )
     app.state.estado_agencia = EstadoAgencia(
         agencia_id=agencia_id,
         relogio=RelogioLamport(),
@@ -78,4 +86,23 @@ def criar_aplicacao(
     app.include_router(auth_router)
     app.include_router(contas_router, dependencies=[Depends(usuario_autenticado)])
     app.include_router(transferencias_router)
+
+    frontend = Path(__file__).resolve().parents[1] / "frontend"
+    app.mount("/static", StaticFiles(directory=frontend), name="static")
+
+    @app.get("/", include_in_schema=False)
+    def pagina_inicial():
+        return FileResponse(frontend / "index.html", headers={
+            "Cache-Control": "no-store",
+            "Content-Security-Policy": "default-src 'self'; connect-src 'self' " + " ".join(URLS_AGENCIAS) + "; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+            "X-Content-Type-Options": "nosniff",
+            "Referrer-Policy": "no-referrer",
+        })
+
+    @app.get("/config", tags=["configuração"])
+    def configuracao_publica():
+        return {"agenciaAtual": agencia_id, "agencias": [
+            {"id": i, "url": url} for i, url in enumerate(URLS_AGENCIAS)
+        ]}
+
     return app

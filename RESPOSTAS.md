@@ -101,3 +101,34 @@ adequadamente sincronizados.
 
 Referências de implementação: [FastAPI — JWT e hashing](https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/)
 e [PyJWT — validação de claims](https://pyjwt.readthedocs.io/en/stable/api.html).
+
+## Seção 12 — Frontend web e decisões de projeto
+
+1. O frontend usa HTML, CSS e JavaScript sem framework e é servido pelo próprio
+   FastAPI em `/`. Assim, as três agências oferecem a mesma interface e não é
+   necessário um quarto servidor ou processo de build. O navegador descobre o
+   mapeamento fixo em `/config`; a seleção altera a URL da API chamada.
+2. O fluxo é login → seleção da agência → consulta da conta → operação. Há depósito,
+   saque, transferência local, transferência entre agências e abertura de conta
+   de demonstração. O particionamento continua `id % 3`; o frontend mostra a agência
+   do destino e verifica o tipo de transferência, mas a API permanece responsável
+   por validar conta, valor e saldo. Valores são enviados como strings decimais;
+   a formatação de moeda no navegador não participa dos cálculos do servidor.
+3. O JWT fica somente em memória JavaScript. Recarregar a página ou sair descarta
+   a sessão; não se grava token ou senha em localStorage, URLs ou logs. A senha é
+   limpa após login. A expiração também é observada na interface e qualquer 401
+   da API encerra a sessão e apresenta uma mensagem para entrar novamente.
+4. Erros HTTP são exibidos com status, `detail` e campos de validação. Falhas de
+   rede têm mensagem própria e não são repetidas automaticamente. Após erro de
+   movimentação, a interface tenta atualizar o saldo, inclusive no 502 conhecido
+   em que o débito permanece aplicado. Se não conseguir consultar, limpa o saldo
+   para não apresentar um valor antigo como atual.
+5. Controles ficam desabilitados durante cada requisição para evitar envio duplo e
+   troca de agência em andamento. Trocar a agência ou editar o número limpa a conta
+   selecionada. As mensagens e os nomes usam `textContent`, evitando interpretar
+   HTML recebido da API. Há labels, foco visível, mensagens acessíveis, layout móvel
+   e estados de sucesso/erro. CORS permite apenas as origens locais das três agências.
+6. MVC permanece: estado/modelos em `estado_agencia.py`, regras HTTP nos controllers,
+   serviços de autenticação/relógio/registro e apresentação em `agencia/frontend`.
+   Evitou-se adicionar React/Node/build porque formulários simples e Fetch atendem
+   ao escopo sem duplicar a lógica bancária existente.
