@@ -123,3 +123,27 @@ def test_abertura_conta_e_erro_de_agencia(page, contas):
     assert page.locator("#titular img").count() == 0
     operar(page, "transferir", "1.00", id+1)
     expect(page.get_by_role("alert")).to_contain_text("tipo de transferência")
+
+
+def test_historico_conta_com_endpoint_real(page, contas):
+    id, c = contas
+    entrar(page)
+    consultar(page, id)
+    operar(page, "depositar", "50.00")
+    expect(page.locator("#mensagem")).to_contain_text("Depósito realizado")
+    operar(page, "sacar", "10.00")
+    expect(page.locator("#mensagem")).to_contain_text("Saque realizado")
+    operar(page, "transferir", "15.00", id+3)
+    expect(page.locator("#mensagem")).to_contain_text("Transferência local realizada")
+    operar(page, "remota", "20.00", id+1)
+    expect(page.locator("#mensagem")).to_contain_text("Transferência entre agências realizada")
+    page.get_by_role("button", name="Consultar histórico").click()
+    expect(page.locator("#historico-itens tr")).to_have_count(5)
+    expect(page.locator("#historico-info")).to_contain_text("105,00")
+    assert c.get(f"http://localhost:4078/contas/{id}/historico").json()["total"] == 5
+    captura(page, "funcionalidade-adicional.png")
+    consultar(page, id+3)
+    expect(page.locator("#historico-itens tr")).to_have_count(0)
+    page.get_by_role("button", name="Consultar histórico").click()
+    expect(page.locator("#historico-itens tr")).to_have_count(2)
+    expect(page.locator("#historico-itens")).to_contain_text("Transferência local recebida")

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
@@ -19,6 +20,7 @@ class RegistroEventos:
         self._diretorio_dados = diretorio_dados or Path(__file__).resolve().parents[2] / "data"
         self._caminho = self._diretorio_dados / f"eventos-agencia-{agencia_id}.jsonl"
         self._lock = Lock()
+        self._historicos: dict[int, list[dict[str, Any]]] = {}
 
     @property
     def caminho(self) -> Path:
@@ -45,6 +47,22 @@ class RegistroEventos:
             self._diretorio_dados.mkdir(parents=True, exist_ok=True)
             with self._caminho.open("a", encoding="utf-8", newline="\n") as arquivo:
                 arquivo.write(f"{linha}\n")
+            # Indexa somente a conta efetivamente afetada por este evento.
+            campo = {
+                "TRANSFERENCIA_DEBITO": "idOrigem",
+                "TRANSFERENCIA_CREDITO": "idDestino",
+                "TRANSFERENCIA_CREDITO_REMOTO": "idDestino",
+                "TRANSFERENCIA_FALHOU": "idOrigem",
+            }.get(tipo, "idConta")
+            id_conta = evento["detalhes"].get(campo)
+            if type(id_conta) is int:
+                self._historicos.setdefault(id_conta, []).append(deepcopy(evento))
 
         print(linha, flush=True)
         return evento
+
+    def historico(self, id_conta: int, offset: int = 0, limite: int = 50) -> tuple[list[dict[str, Any]], int]:
+        """Snapshot paginado do processo atual; logs de processos antigos não são saldos atuais."""
+        with self._lock:
+            eventos = self._historicos.get(id_conta, [])
+            return deepcopy(eventos[offset:offset + limite]), len(eventos)

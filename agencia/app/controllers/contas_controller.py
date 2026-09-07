@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Path, Request, status
+from fastapi import APIRouter, HTTPException, Path, Query, Request, status
 
 from ..config import agencia_responsavel
 from ..estado_agencia import Conta, EstadoAgencia
@@ -26,6 +26,24 @@ def _detalhes_conta(conta: Conta) -> dict[str, int | str]:
         "nomeAluno": conta.nome_aluno,
         "saldo": formatar_moeda(conta.saldo),
     }
+
+
+@router.get("/contas/{id_conta}/historico")
+async def consultar_historico(
+    id_conta: IdContaRota,
+    request: Request,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limite: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> dict:
+    """Histórico por conta, cronológico, do processo atual. Exige JWT de operador."""
+    estado = _estado(request)
+    async with estado.lock:
+        conta = estado.contas.get(id_conta)
+        if conta is None:
+            raise HTTPException(404, f"A conta {id_conta} não foi encontrada nesta agência.")
+        eventos, total = estado.registro.historico(id_conta, offset, limite)
+        return {"idConta": id_conta, "saldoAtual": formatar_moeda(conta.saldo),
+                "eventos": eventos, "total": total, "offset": offset, "limite": limite}
 
 
 @router.post("/contas", response_model=ContaSaida, status_code=status.HTTP_201_CREATED)

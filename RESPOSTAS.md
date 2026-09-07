@@ -132,3 +132,37 @@ e [PyJWT — validação de claims](https://pyjwt.readthedocs.io/en/stable/api.h
    serviços de autenticação/relógio/registro e apresentação em `agencia/frontend`.
    Evitou-se adicionar React/Node/build porque formulários simples e Fetch atendem
    ao escopo sem duplicar a lógica bancária existente.
+
+## Funcionalidade adicional obrigatória — Histórico por conta
+
+**Escolha e valor:** o operador pode conferir como o saldo mudou, identificar crédito
+local/remoto e perceber uma transferência que falhou depois do débito. O saldo
+isolado não explica esses acontecimentos; um histórico por conta torna-os verificáveis.
+
+**Endpoint:** `GET /contas/{id}/historico?offset=0&limite=50`, protegido pelo JWT do
+operador. Retorna `idConta`, `saldoAtual`, `eventos`, `total`, `offset` e `limite`.
+Cada evento contém agência, tipo, `timestampLamport`, `horaParede` UTC e detalhes
+(valor, saldo após o evento e identificadores, conforme o tipo). A ordem é a ordem
+de registro local, com timestamps Lamport crescentes. O limite permitido é 1–100;
+offset negativo ou limite inválido retorna 422; conta ausente retorna 404.
+
+**Implementação:** `RegistroEventos` indexa os eventos já registrados, sem gerar
+outro evento Lamport nem duplicar a lógica de movimentação. Débito pertence somente
+à origem; crédito pertence somente ao destino. A consulta usa o lock do estado e
+obtém um snapshot copiado do registrador. Assim, o saldo e a lista são consistentes
+no instante da consulta. Falhas remotas aparecem como débito seguido de falha,
+preservando a limitação intencional da Sprint 1.
+
+**Persistência:** o histórico consultável é do processo atual, assim como as contas
+em memória. Os arquivos JSONL históricos permanecem no disco, mas não são carregados
+como extrato de uma conta recriada após reiniciar: isso misturaria saldos de execuções
+diferentes. O consumo de memória cresce com os eventos; persistência e retenção
+ficam para uma evolução do projeto, sem introduzir banco de dados nesta Sprint.
+
+**Interface e comprovação:** a seção Histórico permite consultar e carregar mais
+eventos, mostra data/hora local, tipo, valor e saldo do evento. Ao trocar conta ou
+agência, ou movimentar o saldo, a lista é limpa e pode ser consultada novamente.
+Testes em `agencia/tests/test_historico.py` cobrem isolamento, paginação, autorização,
+rejeições, crédito remoto, falha remota e reinício. O teste de navegador
+`test_historico_conta_com_endpoint_real` usa as três agências reais e produz
+`evidencias/sprint1/funcionalidade-adicional.png`.

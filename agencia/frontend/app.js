@@ -18,6 +18,7 @@ function limparConta() {
   $("#saldo").textContent = "—";
   $("#titular").textContent = "Selecione uma conta para consultar.";
   $("#origem-info").textContent = "Consulte a conta antes de movimentar.";
+  limparHistorico();
 }
 function sair() {
   token = null;
@@ -63,12 +64,49 @@ function moeda(valor) {
   return Number(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 function mostrarConta(conta) {
+  limparHistorico();
   contaAtual = conta;
   $("#conta").value = conta.id;
   $("#titular").textContent = `${conta.nomeAluno} · Conta ${conta.id} · Agência ${agencia.value}`;
   $("#saldo").textContent = moeda(conta.saldo);
   $("#origem-info").textContent = `Conta de origem: ${conta.id} · Agência ${agencia.value}`;
 }
+
+let historicoOffset = 0;
+function limparHistorico() {
+  historicoOffset = 0;
+  $("#historico-itens").replaceChildren();
+  $("#historico-tabela").hidden = true;
+  $("#historico-mais").hidden = true;
+  $("#historico-info").textContent = "Consulte o histórico da conta selecionada para ver as movimentações atuais.";
+}
+const tiposEvento = {
+  CRIAR_CONTA: "Abertura de conta", DEPOSITO: "Depósito", SAQUE: "Saque",
+  TRANSFERENCIA_DEBITO: "Transferência enviada · débito",
+  TRANSFERENCIA_CREDITO: "Transferência local recebida",
+  TRANSFERENCIA_CREDITO_REMOTO: "Transferência de outra agência recebida",
+  TRANSFERENCIA_FALHOU: "Transferência falhou · débito mantido",
+  ESTORNO_LOCAL: "Débito local restaurado",
+};
+async function carregarHistorico(reiniciar) {
+  if (!contaAtual) throw new Error("Consulte uma conta antes de carregar o histórico.");
+  if (reiniciar) limparHistorico();
+  const resultado = await api(`/contas/${contaAtual.id}/historico?offset=${historicoOffset}&limite=20`);
+  for (const evento of resultado.eventos) {
+    const linha = document.createElement("tr");
+    const d = evento.detalhes;
+    const valores = [new Date(evento.horaParede).toLocaleString("pt-BR"), tiposEvento[evento.tipo] || evento.tipo,
+      d.valor ? moeda(d.valor) : "—", d.saldo ? moeda(d.saldo) : "—"];
+    valores.forEach((valor) => { const cell = document.createElement("td"); cell.textContent = valor; linha.append(cell); });
+    $("#historico-itens").append(linha);
+  }
+  historicoOffset += resultado.eventos.length;
+  $("#historico-tabela").hidden = resultado.total === 0;
+  $("#historico-mais").hidden = historicoOffset >= resultado.total;
+  $("#historico-info").textContent = `Conta ${resultado.idConta} · ${historicoOffset} de ${resultado.total} eventos · Saldo atual: ${moeda(resultado.saldoAtual)}. Histórico desta execução, em ordem cronológica.`;
+}
+$("#historico-atualizar").addEventListener("click", () => executar(() => carregarHistorico(true)));
+$("#historico-mais").addEventListener("click", () => executar(() => carregarHistorico(false)));
 $("#login-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const dados = Object.fromEntries(new FormData(event.target));

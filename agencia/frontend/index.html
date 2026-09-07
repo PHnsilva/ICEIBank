@@ -44,6 +44,11 @@
           </form>
         </section>
       </div>
+      <section class="card history"><div class="history-heading"><div><p class="eyebrow">CADA MOVIMENTO CONTA</p><h2>Histórico de transações</h2></div><button id="historico-atualizar" type="button" class="quiet">Consultar histórico</button></div>
+        <p id="historico-info" class="muted">Consulte uma conta para ver seu histórico.</p>
+        <div class="table-scroll"><table id="historico-tabela" hidden><thead><tr><th>Data e hora</th><th>Transação</th><th>Valor</th><th>Saldo após evento</th></tr></thead><tbody id="historico-itens"></tbody></table></div>
+        <button id="historico-mais" type="button" class="secondary" hidden>Carregar mais</button>
+      </section>
     </section>
   </main>
   <footer><span>ICEIBank / Sprint 1</span><span>Banco distribuído • 3 agências</span></footer>
