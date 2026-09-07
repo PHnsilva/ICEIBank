@@ -4,11 +4,12 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from .config import validar_agencia_id
+from .auth import ConfiguracaoAuth, router as auth_router, usuario_autenticado
 from .controllers.contas_controller import router as contas_router
 from .controllers.transferencias_controller import router as transferencias_router
 from .estado_agencia import EstadoAgencia
@@ -44,8 +45,9 @@ def criar_aplicacao(
     app = FastAPI(
         title=f"ICEIBank — Agência {agencia_id}",
         version="0.1.0",
-        description="Implementação acadêmica limitada às seções 1 a 10 da Sprint 1.",
+        description="Sistema bancário distribuído acadêmico — Sprint 1.",
     )
+    app.state.auth = ConfiguracaoAuth.do_ambiente()
     app.state.estado_agencia = EstadoAgencia(
         agencia_id=agencia_id,
         relogio=RelogioLamport(),
@@ -73,6 +75,7 @@ def criar_aplicacao(
             content={"detail": "Dados da requisição inválidos.", "erros": erros},
         )
 
-    app.include_router(contas_router)
+    app.include_router(auth_router)
+    app.include_router(contas_router, dependencies=[Depends(usuario_autenticado)])
     app.include_router(transferencias_router)
     return app

@@ -12,6 +12,8 @@ from agencia.app.main import criar_aplicacao
 @pytest.fixture
 def cliente(tmp_path: Path) -> TestClient:
     with TestClient(criar_aplicacao(0, tmp_path)) as cliente_teste:
+        token = cliente_teste.post("/auth/login", json={"usuario": "aluno", "senha": "senha-teste"}).json()["access_token"]
+        cliente_teste.headers["Authorization"] = f"Bearer {token}"
         yield cliente_teste
 
 

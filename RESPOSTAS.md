@@ -63,3 +63,41 @@ adequadamente sincronizados.
 3. Relógios de Lamport sozinhos não conseguem distinguir concorrência com certeza.
 4. Relógios vetoriais são motivados porque carregam informação por participante e
    conseguem distinguir ordem causal de eventos concorrentes.
+
+## Seção 11 — Autenticação JWT
+
+1. O login `POST /auth/login` verifica usuário e senha (hash Argon2id) e emite um
+   JWT assinado com HS256. O cliente envia `Authorization: Bearer <token>` nas
+   operações seguintes. O servidor valida assinatura, algoritmo fixo, emissor,
+   destinatário, sujeito, tipo, início de validade e expiração em cada requisição.
+2. JWT tem cabeçalho, payload e assinatura. O payload é codificado, não criptografado:
+   nunca contém senha ou segredo. A assinatura detecta alterações, mas não oculta
+   os dados. `sub` identifica o operador; `iat`, `nbf` e `exp` usam tempo físico UTC,
+   não o relógio de Lamport, que não mede duração.
+3. O token do operador dura 900 segundos por padrão (`JWT_TTL_SECONDS`). Sem token,
+   com assinatura inválida ou após expirar, a API responde 401 com
+   `WWW-Authenticate: Bearer`; nenhum saldo ou relógio é alterado. Um novo login
+   é necessário após expirar. Não existe refresh token nesta Sprint.
+4. Autenticação verifica identidade; autorização define operações permitidas.
+   Nesta demonstração há um operador acadêmico que pode administrar todas as
+   contas; não se implementa propriedade de conta por usuário. Todas as rotas de
+   contas e transferências exigem JWT. Login, frontend, configuração pública das
+   agências e documentação OpenAPI são públicos e não expõem dados bancários.
+5. As agências usam uma chave diferente da chave de usuários e tokens de serviço
+   de 30 segundos, com sujeito da origem, audiência exclusiva do destino e SHA-256
+   do caminho e corpo da mensagem dentro da assinatura. O destino confere origem,
+   destino e integridade antes de avançar Lamport ou creditar. Um token de usuário
+   não autoriza crédito remoto; o JWT do usuário não é repassado ao destino.
+6. Segredos aleatórios ficam no `.env` ignorado pelo Git, iguais nas três instâncias,
+   e a aplicação recusa configuração ausente/fraca ou chaves iguais. A senha só
+   fica como hash Argon2id. `scripts/configurar_demo.py` gera chaves sem sobrescrever
+   um `.env` existente. A senha de demonstração é pública e exclusiva para uso local.
+7. As três agências escutam somente em loopback. A assinatura autentica as mensagens,
+   mas HTTP não fornece confidencialidade: em máquinas distintas seria obrigatório
+   usar HTTPS/TLS e gerir/rotacionar segredos. Chaves compartilhadas pressupõem
+   confiança entre as três agências. Tokens Bearer roubados podem ser reutilizados
+   até expirar; não há revogação, proteção contra replay nem idempotência nesta
+   etapa, coerentemente com o escopo de consistência das Sprints seguintes.
+
+Referências de implementação: [FastAPI — JWT e hashing](https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/)
+e [PyJWT — validação de claims](https://pyjwt.readthedocs.io/en/stable/api.html).

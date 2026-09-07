@@ -3,9 +3,10 @@
 from typing import Annotated, Any
 
 import httpx
-from fastapi import APIRouter, HTTPException, Path, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
 
 from ..config import agencia_responsavel, url_da_agencia
+from ..auth import agencia_autenticada, token_agencia, usuario_autenticado
 from ..estado_agencia import EstadoAgencia
 from ..schemas import (
     CENTAVOS,
@@ -72,7 +73,7 @@ def _erro_falha_remota(dados: TransferenciaSolicitada, valor: str) -> HTTPExcept
     )
 
 
-@router.post("/transferencias")
+@router.post("/transferencias", dependencies=[Depends(usuario_autenticado)])
 async def transferir(dados: TransferenciaSolicitada, request: Request) -> dict[str, Any]:
     """Debita a origem e credita um destino local ou remoto."""
     estado = _estado(request)
@@ -158,7 +159,10 @@ async def transferir(dados: TransferenciaSolicitada, request: Request) -> dict[s
             timeout=estado.timeout_http,
             transport=estado.transporte_http,
         ) as cliente:
-            resposta = await cliente.post(url, json=corpo_remoto)
+            token = token_agencia(request.app.state.auth, estado.agencia_id, agencia_destino,
+                                  f"/contas/{dados.id_destino}/creditar-remoto", corpo_remoto)
+            resposta = await cliente.post(url, json=corpo_remoto,
+                                         headers={"Authorization": f"Bearer {token}"})
             resposta.raise_for_status()
             resposta_remota = resposta.json()
             if not isinstance(resposta_remota, dict) or "saldo" not in resposta_remota:
@@ -210,7 +214,7 @@ async def transferir(dados: TransferenciaSolicitada, request: Request) -> dict[s
     }
 
 
-@router.post("/contas/{id_conta}/creditar-remoto")
+@router.post("/contas/{id_conta}/creditar-remoto", dependencies=[Depends(agencia_autenticada)])
 async def creditar_remoto(
     id_conta: IdContaRota,
     credito: CreditoRemoto,

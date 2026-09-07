@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from agencia.app.main import criar_aplicacao
+from agencia.app.auth import token_agencia
 
 
 def _cliente(
@@ -15,7 +16,10 @@ def _cliente(
     diretorio: Path,
     transporte: httpx.AsyncBaseTransport | None = None,
 ) -> TestClient:
-    return TestClient(criar_aplicacao(agencia_id, diretorio, transporte_http=transporte))
+    cliente = TestClient(criar_aplicacao(agencia_id, diretorio, transporte_http=transporte))
+    token = cliente.post("/auth/login", json={"usuario": "aluno", "senha": "senha-teste"}).json()["access_token"]
+    cliente.headers["Authorization"] = f"Bearer {token}"
+    return cliente
 
 
 def _criar_conta(
@@ -156,6 +160,8 @@ def test_credito_remoto_atualiza_relogio_antes_de_creditar(tmp_path: Path) -> No
         resposta = cliente.post(
             "/contas/1/creditar-remoto",
             json={"valor": "30.00", "timestampLamport": 3, "origemAgencia": 0},
+            headers={"Authorization": "Bearer " + token_agencia(cliente.app.state.auth, 0, 1,
+                     "/contas/1/creditar-remoto", {"valor": "30.00", "timestampLamport": 3, "origemAgencia": 0})},
         )
 
         assert resposta.status_code == 200
@@ -172,6 +178,8 @@ def test_credito_remoto_em_conta_inexistente_ainda_atualiza_relogio(tmp_path: Pa
         resposta = cliente.post(
             "/contas/1/creditar-remoto",
             json={"valor": "1.00", "timestampLamport": 10, "origemAgencia": 0},
+            headers={"Authorization": "Bearer " + token_agencia(cliente.app.state.auth, 0, 1,
+                     "/contas/1/creditar-remoto", {"valor": "1.00", "timestampLamport": 10, "origemAgencia": 0})},
         )
 
         assert resposta.status_code == 404

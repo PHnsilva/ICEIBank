@@ -1,6 +1,9 @@
 """Inicializador de uma agência a partir da variável AGENCIA_ID."""
 
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 import uvicorn
 
@@ -22,6 +25,7 @@ def obter_agencia_id() -> int:
 
 def main() -> None:
     """Inicia o servidor HTTP na porta reservada para a agência."""
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env")
     try:
         agencia_id = obter_agencia_id()
     except ValueError as erro:
