@@ -1,10 +1,11 @@
 from pathlib import Path
 from datetime import datetime, timezone
 import json
+from scripts.ambiente_sprint2 import aguardar
 
 from playwright.sync_api import expect
 
-EVIDENCIAS = Path(__file__).resolve().parents[2] / "evidencias" / "sprint1"
+EVIDENCIAS = Path(__file__).resolve().parents[2] / "evidencias" / "sprint2" / "regressao"
 
 
 def captura(page, nome):
@@ -63,7 +64,8 @@ def test_fluxo_completo_tres_agencias(page, contas):
     operar(page, "transferir", "15.00", id+3)
     expect(page.locator("#mensagem")).to_contain_text("Transferência local realizada")
     operar(page, "remota", "20.00", id+1)
-    expect(page.locator("#mensagem")).to_contain_text("Transferência entre agências realizada")
+    aguardar(lambda: c.get(f"http://localhost:{4078+(id+1)%3}/contas/{id+1}").json()["saldo"] == "120.00")
+    expect(page.locator("#mensagem")).to_contain_text("Transferência publicada para a agência de destino")
     expect(page.locator("#saldo")).to_contain_text("80,00")
     captura(page, "frontend-transferencia.png")
     page.locator("#agencia").select_option("1")
@@ -71,12 +73,14 @@ def test_fluxo_completo_tres_agencias(page, contas):
     consultar(page, id+1)
     expect(page.locator("#saldo")).to_contain_text("120,00")
     operar(page, "remota", "10.00", id+2)
-    expect(page.locator("#mensagem")).to_contain_text("Transferência entre agências realizada")
+    aguardar(lambda: c.get(f"http://localhost:{4078+(id+2)%3}/contas/{id+2}").json()["saldo"] == "110.00")
+    expect(page.locator("#mensagem")).to_contain_text("Transferência publicada para a agência de destino")
     page.locator("#agencia").select_option("2")
     consultar(page, id+2)
     expect(page.locator("#saldo")).to_contain_text("110,00")
     operar(page, "remota", "5.00", id)
-    expect(page.locator("#mensagem")).to_contain_text("Transferência entre agências realizada")
+    aguardar(lambda: c.get(f"http://localhost:{4078+(id)%3}/contas/{id}").json()["saldo"] == "85.00")
+    expect(page.locator("#mensagem")).to_contain_text("Transferência publicada para a agência de destino")
     assert [c.get(f"http://localhost:{4078+n%3}/contas/{n}").json()["saldo"] for n in (id, id+1, id+2, id+3)] == ["85.00", "110.00", "105.00", "115.00"]
     historicos = [c.get(f"http://localhost:{4078+n%3}/contas/{n}/historico").json() for n in (id, id+1, id+2, id+3)]
     (EVIDENCIAS / "fluxo-tres-agencias.json").write_text(json.dumps({
@@ -146,7 +150,8 @@ def test_historico_conta_com_endpoint_real(page, contas):
     operar(page, "transferir", "15.00", id+3)
     expect(page.locator("#mensagem")).to_contain_text("Transferência local realizada")
     operar(page, "remota", "20.00", id+1)
-    expect(page.locator("#mensagem")).to_contain_text("Transferência entre agências realizada")
+    aguardar(lambda: c.get(f"http://localhost:{4078+(id+1)%3}/contas/{id+1}").json()["saldo"] == "120.00")
+    expect(page.locator("#mensagem")).to_contain_text("Transferência publicada para a agência de destino")
     page.get_by_role("button", name="Consultar histórico").click()
     expect(page.locator("#historico-itens tr")).to_have_count(5)
     expect(page.locator("#historico-info")).to_contain_text("105,00")
@@ -159,16 +164,14 @@ def test_historico_conta_com_endpoint_real(page, contas):
     expect(page.locator("#historico-itens")).to_contain_text("Transferência local recebida")
 
 
-def test_falha_remota_real_mostra_502_e_debito_aplicado(page, contas):
+def test_destino_ausente_publica_sem_afirmar_credito(page, contas):
     id, c = contas
     entrar(page)
     consultar(page, id)
     operar(page, "remota", "5.00", 999997)
-    expect(page.get_by_role("alert")).to_contain_text("HTTP 502")
-    expect(page.get_by_role("alert")).to_contain_text("não foi restaurado")
+    expect(page.locator("#mensagem")).to_contain_text("entrega assíncrona")
+    expect(page.locator("#mensagem")).not_to_contain_text("Saldo do destino")
     expect(page.locator("#saldo")).to_contain_text("95,00")
-    page.get_by_role("button", name="Consultar histórico").click()
-    expect(page.locator("#historico-itens")).to_contain_text("Transferência falhou · débito mantido")
     assert c.get(f"http://localhost:4078/contas/{id}/historico").json()["saldoAtual"] == "95.00"
 
 

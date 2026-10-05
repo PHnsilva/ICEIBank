@@ -1,0 +1,44 @@
+**********************
+PowerShell transcript start
+Start time: 20261004215303
+Username: PHNSILVA\peecs
+RunAs User: PHNSILVA\peecs
+Configuration Name: 
+Machine: PHNSILVA (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Users\peecs\.cache\codex-runtimes\codex-primary-runtime\dependencies\native\powershell\pwsh.dll -NoLogo -NoProfile -NoExit -File C:\Users\peecs\Documents\Codex\2026-10-03\verifique-meu-repo-relacionado-a-essa\work\abrir_cenario_sprint2.ps1 -Cenario adicional
+Process ID: 2772
+PSVersion: 7.6.5
+PSEdition: Core
+GitCommitId: 7.6.5
+OS: Microsoft Windows 10.0.26200
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.4
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+ICEIBank Sprint 2 — cenário: adicional
+Data real da execução (Get-Date -Format o):
+2026-10-04T21:53:03.9609385-03:00
+Agência 1 encerrada após criar a conta 1 (saldo 100.00).
+POST /transferencias: HTTP 200; status=publicada; saldoOrigem=85.00
+Resposta confirma publicação; não confirma crédito no destino.
+RabbitMQ: fila-agencia-1 retém 1 mensagem, com zero consumidores.
+Agência 1 reiniciada. GET /contas/1: HTTP 404 (conta em memória foi perdida).
+--- Log real da Agência 0 ---
+[agencia-0] vetor=[1, 0, 0] CRIAR_CONTA conta=0 valor=- saldo=100.00 motivo=-
+[agencia-0] vetor=[2, 0, 0] TRANSFERENCIA_DEBITO conta=0 valor=15.00 saldo=85.00 motivo=-
+[agencia-0] vetor=[3, 0, 0] TRANSFERENCIA_PUBLICADA conta=1 valor=15.00 saldo=- motivo=-
+--- Log real da Agência 1 ---
+[agencia-1] vetor=[0, 1, 0] CRIAR_CONTA conta=1 valor=- saldo=100.00 motivo=-
+[agencia-1] vetor=[3, 1, 0] CREDITO_REMOTO_FALHOU conta=1 valor=15.00 saldo=- motivo=conta não encontrada
+[agencia-1] vetor=[3, 2, 0] CREDITO_REMOTO_FALHOU conta=1 valor=15.00 saldo=- motivo=conta não encontrada
+RabbitMQ: fila-agencia-1.nao-processadas preserva o crédito de 15.00 após falhas.
+x-death.reason=rejected; mensagem entregue, mas conta ausente; saldo da origem=85.00.
+Conta 1 recriada: saldo=1.00; mensagem na DLQ não é reaplicada automaticamente.
+
+Verificações do cenário: OK. Os processos e o vhost exclusivos do ensaio foram encerrados.
+**********************
+PowerShell transcript end
+End time: 20261004215332
+**********************

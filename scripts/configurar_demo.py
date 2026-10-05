@@ -12,5 +12,6 @@ with destino.open("x", encoding="utf-8") as arquivo:
         "LOGIN_USUARIO=aluno\n"
         f"LOGIN_SENHA_HASH='{PasswordHash.recommended().hash('iceibank-sprint1')}'\n"
         "JWT_TTL_SECONDS=900\n"
+        "RABBITMQ_URL=amqp://guest:guest@127.0.0.1:5672/\n"
     )
 print(".env criado. Login acadêmico local: aluno / iceibank-sprint1")

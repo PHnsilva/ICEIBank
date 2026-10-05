@@ -1,0 +1,275 @@
+{
+  "verificadoEmUTC": "2026-10-05T00:55:27.172740+00:00",
+  "ciclo": "0 -> 1 -> 2 -> 0",
+  "saldoTotalFinal": "415.00",
+  "contas": [
+    {
+      "idConta": 3090,
+      "saldoAtual": "85.00",
+      "eventos": [
+        {
+          "agencia": "agencia-0",
+          "tipo": "CRIAR_CONTA",
+          "timestampVetorial": [
+            3,
+            0,
+            0
+          ],
+          "horaParede": "2026-10-05T00:55:19.972181Z",
+          "detalhes": {
+            "idConta": 3090,
+            "nomeAluno": "Aluno 3090",
+            "saldo": "100.00"
+          }
+        },
+        {
+          "agencia": "agencia-0",
+          "tipo": "DEPOSITO",
+          "timestampVetorial": [
+            5,
+            0,
+            0
+          ],
+          "horaParede": "2026-10-05T00:55:24.964435Z",
+          "detalhes": {
+            "idConta": 3090,
+            "valor": "25.00",
+            "saldo": "125.00"
+          }
+        },
+        {
+          "agencia": "agencia-0",
+          "tipo": "SAQUE",
+          "timestampVetorial": [
+            6,
+            0,
+            0
+          ],
+          "horaParede": "2026-10-05T00:55:25.162595Z",
+          "detalhes": {
+            "idConta": 3090,
+            "valor": "10.00",
+            "saldo": "115.00"
+          }
+        },
+        {
+          "agencia": "agencia-0",
+          "tipo": "TRANSFERENCIA_DEBITO",
+          "timestampVetorial": [
+            7,
+            0,
+            0
+          ],
+          "horaParede": "2026-10-05T00:55:25.364077Z",
+          "detalhes": {
+            "idOrigem": 3090,
+            "idDestino": 3093,
+            "valor": "15.00",
+            "idTransferencia": "22d3d1e7-3938-4d4b-bc37-74d8bd89c932",
+            "saldo": "100.00"
+          }
+        },
+        {
+          "agencia": "agencia-0",
+          "tipo": "TRANSFERENCIA_DEBITO",
+          "timestampVetorial": [
+            9,
+            0,
+            0
+          ],
+          "horaParede": "2026-10-05T00:55:25.564332Z",
+          "detalhes": {
+            "idOrigem": 3090,
+            "idDestino": 3091,
+            "valor": "20.00",
+            "idTransferencia": "d6589e40-21a5-449f-aeba-7483269a1795",
+            "saldo": "80.00"
+          }
+        },
+        {
+          "agencia": "agencia-0",
+          "tipo": "TRANSFERENCIA_CREDITO_REMOTO",
+          "timestampVetorial": [
+            11,
+            5,
+            5
+          ],
+          "horaParede": "2026-10-05T00:55:27.082165Z",
+          "detalhes": {
+            "idDestino": 3090,
+            "idConta": 3090,
+            "idOrigem": 3092,
+            "valor": "5.00",
+            "origemAgencia": 2,
+            "idTransferencia": "68360c26-4f8c-4203-91e4-0f8fec730d82",
+            "saldo": "85.00"
+          }
+        }
+      ],
+      "total": 6,
+      "offset": 0,
+      "limite": 50
+    },
+    {
+      "idConta": 3091,
+      "saldoAtual": "110.00",
+      "eventos": [
+        {
+          "agencia": "agencia-1",
+          "tipo": "CRIAR_CONTA",
+          "timestampVetorial": [
+            0,
+            2,
+            0
+          ],
+          "horaParede": "2026-10-05T00:55:22.006239Z",
+          "detalhes": {
+            "idConta": 3091,
+            "nomeAluno": "Aluno 3091",
+            "saldo": "100.00"
+          }
+        },
+        {
+          "agencia": "agencia-1",
+          "tipo": "TRANSFERENCIA_CREDITO_REMOTO",
+          "timestampVetorial": [
+            10,
+            3,
+            0
+          ],
+          "horaParede": "2026-10-05T00:55:25.567669Z",
+          "detalhes": {
+            "idDestino": 3091,
+            "idConta": 3091,
+            "idOrigem": 3090,
+            "valor": "20.00",
+            "origemAgencia": 0,
+            "idTransferencia": "d6589e40-21a5-449f-aeba-7483269a1795",
+            "saldo": "120.00"
+          }
+        },
+        {
+          "agencia": "agencia-1",
+          "tipo": "TRANSFERENCIA_DEBITO",
+          "timestampVetorial": [
+            10,
+            4,
+            0
+          ],
+          "horaParede": "2026-10-05T00:55:26.382819Z",
+          "detalhes": {
+            "idOrigem": 3091,
+            "idDestino": 3092,
+            "valor": "10.00",
+            "idTransferencia": "f47be014-4772-4927-8ee3-9ea371c18b15",
+            "saldo": "110.00"
+          }
+        }
+      ],
+      "total": 3,
+      "offset": 0,
+      "limite": 50
+    },
+    {
+      "idConta": 3092,
+      "saldoAtual": "105.00",
+      "eventos": [
+        {
+          "agencia": "agencia-2",
+          "tipo": "CRIAR_CONTA",
+          "timestampVetorial": [
+            0,
+            0,
+            2
+          ],
+          "horaParede": "2026-10-05T00:55:24.040135Z",
+          "detalhes": {
+            "idConta": 3092,
+            "nomeAluno": "Aluno 3092",
+            "saldo": "100.00"
+          }
+        },
+        {
+          "agencia": "agencia-2",
+          "tipo": "TRANSFERENCIA_CREDITO_REMOTO",
+          "timestampVetorial": [
+            10,
+            5,
+            3
+          ],
+          "horaParede": "2026-10-05T00:55:26.386549Z",
+          "detalhes": {
+            "idDestino": 3092,
+            "idConta": 3092,
+            "idOrigem": 3091,
+            "valor": "10.00",
+            "origemAgencia": 1,
+            "idTransferencia": "f47be014-4772-4927-8ee3-9ea371c18b15",
+            "saldo": "110.00"
+          }
+        },
+        {
+          "agencia": "agencia-2",
+          "tipo": "TRANSFERENCIA_DEBITO",
+          "timestampVetorial": [
+            10,
+            5,
+            4
+          ],
+          "horaParede": "2026-10-05T00:55:27.029959Z",
+          "detalhes": {
+            "idOrigem": 3092,
+            "idDestino": 3090,
+            "valor": "5.00",
+            "idTransferencia": "68360c26-4f8c-4203-91e4-0f8fec730d82",
+            "saldo": "105.00"
+          }
+        }
+      ],
+      "total": 3,
+      "offset": 0,
+      "limite": 50
+    },
+    {
+      "idConta": 3093,
+      "saldoAtual": "115.00",
+      "eventos": [
+        {
+          "agencia": "agencia-0",
+          "tipo": "CRIAR_CONTA",
+          "timestampVetorial": [
+            4,
+            0,
+            0
+          ],
+          "horaParede": "2026-10-05T00:55:24.045458Z",
+          "detalhes": {
+            "idConta": 3093,
+            "nomeAluno": "Aluno 3093",
+            "saldo": "100.00"
+          }
+        },
+        {
+          "agencia": "agencia-0",
+          "tipo": "TRANSFERENCIA_CREDITO",
+          "timestampVetorial": [
+            8,
+            0,
+            0
+          ],
+          "horaParede": "2026-10-05T00:55:25.364689Z",
+          "detalhes": {
+            "idOrigem": 3090,
+            "idDestino": 3093,
+            "valor": "15.00",
+            "idTransferencia": "22d3d1e7-3938-4d4b-bc37-74d8bd89c932",
+            "saldo": "115.00"
+          }
+        }
+      ],
+      "total": 2,
+      "offset": 0,
+      "limite": 50
+    }
+  ]
+}

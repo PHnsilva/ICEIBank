@@ -1,5 +1,8 @@
 # Checklist de verificação — Sprint 1
 
+Registro histórico da Sprint 1: o PR #1 foi posteriormente integrado à `main`.
+A aplicação atual evolui na Sprint 2, verificada em `CHECKLIST_SPRINT2.md`.
+
 Este checklist operacional reúne os requisitos da solicitação de continuação e os
 itens já documentados no repositório. O enunciado original da disciplina não está
 versionado; a numeração interna de perguntas não foi inventada. As respostas
@@ -67,6 +70,5 @@ existentes das seções 6.4, 8.3 e 10 foram preservadas.
 - [x] Commits finais publicados e PR atualizado após a revisão.
 - [ ] Vídeo de apresentação — **excluído do escopo por solicitação**.
 
-Não executar merge em `main` nesta entrega.
-O PR permanece em draft enquanto o vídeo estiver pendente; a condição de concluir
-a Sprint integralmente antes de marcar pronto foi preservada.
+O PR #1 está mesclado no GitHub. A pendência de vídeo acima é o registro do escopo
+daquela entrega; sua apresentação externa não foi verificada nesta evolução.

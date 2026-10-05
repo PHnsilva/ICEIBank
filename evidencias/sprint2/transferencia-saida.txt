@@ -1,0 +1,12 @@
+POST /transferencias: HTTP 200; status=publicada; saldoOrigem=85.00
+Resposta confirma publicação; não confirma crédito no destino.
+GET Agência 1 /contas/1: saldo=115.00; crédito assíncrono confirmado pela consulta.
+--- Log real da Agência 0 ---
+[agencia-0] vetor=[1, 0, 0] CRIAR_CONTA conta=0 valor=- saldo=100.00 motivo=-
+[agencia-0] vetor=[2, 0, 0] TRANSFERENCIA_DEBITO conta=0 valor=15.00 saldo=85.00 motivo=-
+[agencia-0] vetor=[3, 0, 0] TRANSFERENCIA_PUBLICADA conta=1 valor=15.00 saldo=- motivo=-
+--- Log real da Agência 1 ---
+[agencia-1] vetor=[0, 1, 0] CRIAR_CONTA conta=1 valor=- saldo=100.00 motivo=-
+[agencia-1] vetor=[3, 2, 0] TRANSFERENCIA_CREDITO_REMOTO conta=1 valor=15.00 saldo=115.00 motivo=-
+
+Verificações do cenário: OK. Os processos e o vhost exclusivos do ensaio foram encerrados.

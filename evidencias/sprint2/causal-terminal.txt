@@ -1,0 +1,46 @@
+**********************
+PowerShell transcript start
+Start time: 20261004215832
+Username: PHNSILVA\peecs
+RunAs User: PHNSILVA\peecs
+Configuration Name: 
+Machine: PHNSILVA (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Users\peecs\.cache\codex-runtimes\codex-primary-runtime\dependencies\native\powershell\pwsh.dll -NoLogo -NoProfile -NoExit -File C:\Users\peecs\Documents\Codex\2026-10-03\verifique-meu-repo-relacionado-a-essa\work\abrir_cenario_sprint2.ps1 -Cenario causal
+Process ID: 16688
+PSVersion: 7.6.5
+PSEdition: Core
+GitCommitId: 7.6.5
+OS: Microsoft Windows 10.0.26200
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.4
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+ICEIBank Sprint 2 — cenário: causal
+Data real da execução (Get-Date -Format o):
+2026-10-04T21:58:32.3070253-03:00
+POST /transferencias: HTTP 200; status=publicada; saldoOrigem=85.00
+Resposta confirma publicação; não confirma crédito no destino.
+GET Agência 1 /contas/1: saldo=115.00; crédito assíncrono confirmado pela consulta.
+
+Executando: python agencia/mesclar_logs.py --dados <logs desta execução>
+=== Linha do tempo (ordenada por hora de parede) ===
+[agencia-0] vetor=[1, 0, 0] CRIAR_CONTA parede=2026-10-05T00:58:48.073457Z detalhes={"idConta": 0, "nomeAluno": "Aluno 0", "saldo": "100.00"}
+[agencia-1] vetor=[0, 1, 0] CRIAR_CONTA parede=2026-10-05T00:58:50.130004Z detalhes={"idConta": 1, "nomeAluno": "Aluno 1", "saldo": "100.00"}
+[agencia-0] vetor=[2, 0, 0] TRANSFERENCIA_DEBITO parede=2026-10-05T00:58:50.135336Z detalhes={"idDestino": 1, "idOrigem": 0, "idTransferencia": "f98cd2ee-657a-4180-aa98-906ecdaf2b87", "saldo": "85.00", "valor": "15.00"}
+[agencia-1] vetor=[3, 2, 0] TRANSFERENCIA_CREDITO_REMOTO parede=2026-10-05T00:58:50.139710Z detalhes={"idConta": 1, "idDestino": 1, "idOrigem": 0, "idTransferencia": "f98cd2ee-657a-4180-aa98-906ecdaf2b87", "origemAgencia": 0, "saldo": "115.00", "valor": "15.00"}
+[agencia-0] vetor=[3, 0, 0] TRANSFERENCIA_PUBLICADA parede=2026-10-05T00:58:50.140026Z detalhes={"agenciaDestino": 1, "idDestino": 1, "idOrigem": 0, "idTransferencia": "f98cd2ee-657a-4180-aa98-906ecdaf2b87", "valor": "15.00"}
+
+=== Pares de eventos CONCORRENTES entre agências diferentes ===
+[agencia-0] CRIAR_CONTA ([1, 0, 0]) x [agencia-1] CRIAR_CONTA ([0, 1, 0])
+[agencia-1] CRIAR_CONTA ([0, 1, 0]) x [agencia-0] TRANSFERENCIA_DEBITO ([2, 0, 0])
+[agencia-1] CRIAR_CONTA ([0, 1, 0]) x [agencia-0] TRANSFERENCIA_PUBLICADA ([3, 0, 0])
+
+Conferência: débito [2, 0, 0] ANTES do crédito [3, 2, 0]; este par não é concorrente.
+
+Verificações do cenário: OK. Os processos e o vhost exclusivos do ensaio foram encerrados.
+**********************
+PowerShell transcript end
+End time: 20261004215850
+**********************
