@@ -6,7 +6,7 @@ from playwright.sync_api import expect
 
 from agencia.app.auth import emitir_token
 
-EVIDENCIAS = Path(__file__).resolve().parents[2] / "evidencias" / "sprint1"
+EVIDENCIAS = Path(__file__).resolve().parents[2] / "evidencias" / "sprint2" / "regressao"
 
 
 def consultar_swagger(page, id, token=None):
@@ -27,6 +27,7 @@ def consultar_swagger(page, id, token=None):
 
 
 def test_evidencias_auth_reais(page, contas, agencias):
+    EVIDENCIAS.mkdir(parents=True, exist_ok=True)
     id, c = contas
     page.set_viewport_size({"width": 1440, "height": 1200})
     bloco = consultar_swagger(page, id)

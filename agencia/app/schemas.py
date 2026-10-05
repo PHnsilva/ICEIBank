@@ -46,13 +46,16 @@ class TransferenciaSolicitada(EsquemaBase):
     valor: ValorPositivo
 
 
-class CreditoRemoto(EsquemaBase):
-    """Mensagem recebida diretamente de outra agência."""
+class CreditoMensagem(EsquemaBase):
+    """Crédito assíncrono recebido da exchange topic."""
+
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
     valor: ValorPositivo
-    timestamp_lamport: Annotated[int, Field(strict=True, ge=0)] = Field(
-        alias="timestampLamport"
-    )
+    id_conta: IdConta = Field(alias="idConta")
+    id_origem: IdConta | None = Field(default=None, alias="idOrigem")
+    vetor_envio: list[Annotated[int, Field(strict=True, ge=0)]] = Field(alias="vetorEnvio", min_length=3, max_length=3)
+    id_transferencia: str | None = Field(default=None, alias="idTransferencia", max_length=100)
     origem_agencia: Annotated[int, Field(strict=True, ge=0, le=2)] = Field(
         alias="origemAgencia"
     )

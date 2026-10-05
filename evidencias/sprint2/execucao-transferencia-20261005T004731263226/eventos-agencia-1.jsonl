@@ -1,0 +1,2 @@
+{"agencia":"agencia-1","tipo":"CRIAR_CONTA","timestampVetorial":[0,1,0],"horaParede":"2026-10-05T00:47:47.504155Z","detalhes":{"idConta":1,"nomeAluno":"Aluno 1","saldo":"100.00"}}
+{"agencia":"agencia-1","tipo":"TRANSFERENCIA_CREDITO_REMOTO","timestampVetorial":[3,2,0],"horaParede":"2026-10-05T00:47:47.514194Z","detalhes":{"idDestino":1,"idConta":1,"idOrigem":0,"valor":"15.00","origemAgencia":0,"idTransferencia":"5ebcac35-50b7-4fc3-b35f-915b464922a2","saldo":"115.00"}}

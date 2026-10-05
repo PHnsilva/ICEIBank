@@ -1,82 +1,86 @@
-"""Mescla os logs JSONL das agências em uma linha do tempo de Lamport."""
+"""Linha do tempo vetorial, apresentada por hora de parede e comparada por causalidade."""
 
-from __future__ import annotations
-
+import argparse
 import json
-from collections import Counter
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterable
 
-CABECALHO = "=== Linha do tempo unificada (ordenada por relogio de Lamport) ==="
-DIRETORIO_DADOS = Path(__file__).resolve().parent / "data"
+try:
+    from agencia.app.services.relogio_vetorial import comparar_vetores, validar_vetor
+except ModuleNotFoundError:
+    from app.services.relogio_vetorial import comparar_vetores, validar_vetor
+
+CABECALHO = "=== Linha do tempo (ordenada por hora de parede) ==="
 
 
-def carregar_eventos(diretorio_dados: Path = DIRETORIO_DADOS) -> list[dict[str, Any]]:
-    """Lê todos os arquivos JSONL e devolve seus eventos em ordem lógica."""
-    eventos: list[dict[str, Any]] = []
-    for caminho in sorted(diretorio_dados.glob("*.jsonl")):
-        with caminho.open("r", encoding="utf-8") as arquivo:
-            for numero_linha, linha in enumerate(arquivo, start=1):
-                linha = linha.strip()
-                if not linha:
+def carregar_eventos(pasta: Path | None = None) -> list[dict]:
+    pasta = pasta or Path(__file__).resolve().parent / "data"
+    eventos = []
+    legados = 0
+    ultimo_local = {}
+    for arquivo in sorted(pasta.glob("*.jsonl")):
+        for numero, linha in enumerate(arquivo.read_text(encoding="utf-8").splitlines(), 1):
+            if not linha.strip():
+                continue
+            try:
+                evento = json.loads(linha)
+                # Lamport preservado da Sprint 1 não contém informação para comparar vetores.
+                if "timestampVetorial" not in evento and "timestampLamport" in evento:
+                    legados += 1
                     continue
-                try:
-                    evento = json.loads(linha)
-                    int(evento["timestampLamport"])
-                    str(evento["horaParede"])
-                    str(evento["agencia"])
-                    str(evento["tipo"])
-                    detalhes = evento["detalhes"]
-                    if not isinstance(detalhes, dict):
-                        raise TypeError
-                except (json.JSONDecodeError, KeyError, TypeError, ValueError) as erro:
-                    raise ValueError(
-                        f"Evento inválido em {caminho.name}, linha {numero_linha}."
-                    ) from erro
+                validar_vetor(evento["timestampVetorial"])
+                datetime.fromisoformat(evento["horaParede"].replace("Z", "+00:00"))
+                if evento["agencia"] not in {"agencia-0", "agencia-1", "agencia-2"}:
+                    raise ValueError("Agência inválida.")
+                if not isinstance(evento["detalhes"], dict) or not isinstance(evento["tipo"], str):
+                    raise ValueError("Campos inválidos.")
+                id_agencia = int(evento["agencia"].rsplit("-", 1)[1])
+                local = evento["timestampVetorial"][id_agencia]
+                if local <= ultimo_local.get(evento["agencia"], -1):
+                    raise ValueError("Reinício ou ordem local inválida.")
+                ultimo_local[evento["agencia"]] = local
                 eventos.append(evento)
-
-    return sorted(
-        eventos,
-        key=lambda evento: (
-            int(evento["timestampLamport"]),
-            str(evento["horaParede"]),
-            str(evento["agencia"]),
-        ),
-    )
+            except (ValueError, KeyError, TypeError):
+                raise ValueError(f"Evento inválido ou logs de reinícios misturados em {arquivo.name}, linha {numero}. Use --dados com logs de uma execução.") from None
+    if legados:
+        print(f"Aviso: {legados} eventos Lamport da Sprint 1 preservados e excluídos da análise vetorial.")
+    return sorted(eventos, key=lambda e: datetime.fromisoformat(e["horaParede"].replace("Z", "+00:00")))
 
 
-def imprimir_linha_do_tempo(eventos: Iterable[dict[str, Any]]) -> None:
-    """Imprime todos os eventos, destacando timestamps Lamport empatados."""
-    eventos_ordenados = list(eventos)
-    contagens = Counter(int(evento["timestampLamport"]) for evento in eventos_ordenados)
+def pares_concorrentes(eventos):
+    for i, primeiro in enumerate(eventos):
+        for segundo in eventos[i + 1:]:
+            if (primeiro["agencia"] != segundo["agencia"]
+                    and comparar_vetores(primeiro["timestampVetorial"], segundo["timestampVetorial"]) == "CONCORRENTES"):
+                yield primeiro, segundo
 
+
+def imprimir_linha_do_tempo(eventos) -> None:
+    eventos = list(eventos)
     print(CABECALHO)
-    if not eventos_ordenados:
+    if not eventos:
         print("Nenhum evento foi encontrado nos logs das agências.")
-        return
-
-    for evento in eventos_ordenados:
-        timestamp = int(evento["timestampLamport"])
-        marca_empate = f" [EMPATE x{contagens[timestamp]}]" if contagens[timestamp] > 1 else ""
-        detalhes = json.dumps(evento["detalhes"], ensure_ascii=False, sort_keys=True)
-        print(
-            f"L={timestamp:04d}{marca_empate} | "
-            f"parede={evento['horaParede']} | "
-            f"agencia={evento['agencia']} | "
-            f"tipo={evento['tipo']} | "
-            f"detalhes={detalhes}"
-        )
+    for evento in eventos:
+        print(f"[{evento['agencia']}] vetor={evento['timestampVetorial']} {evento['tipo']} "
+              f"parede={evento['horaParede']} detalhes={json.dumps(evento['detalhes'], ensure_ascii=False, sort_keys=True)}")
+    print("\n=== Pares de eventos CONCORRENTES entre agências diferentes ===")
+    encontrou = False
+    for e1, e2 in pares_concorrentes(eventos):
+        encontrou = True
+        print(f"[{e1['agencia']}] {e1['tipo']} ({e1['timestampVetorial']}) x "
+              f"[{e2['agencia']}] {e2['tipo']} ({e2['timestampVetorial']})")
+    if not encontrou:
+        print("(nenhum par concorrente encontrado nesta execução)")
 
 
-def main() -> None:
-    """Executa a leitura e a exibição da linha do tempo unificada."""
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--dados", type=Path, help="Diretório de logs desta execução (evita misturar reinícios).")
+    args = parser.parse_args()
     try:
-        eventos = carregar_eventos()
-    except OSError as erro:
-        raise SystemExit(f"Erro ao ler os logs: {erro}") from None
-    except ValueError as erro:
-        raise SystemExit(f"Erro ao mesclar os logs: {erro}") from None
-    imprimir_linha_do_tempo(eventos)
+        imprimir_linha_do_tempo(carregar_eventos(args.dados))
+    except (ValueError, OSError) as erro:
+        raise SystemExit(str(erro)) from None
 
 
 if __name__ == "__main__":

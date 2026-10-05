@@ -15,7 +15,7 @@ def test_registra_jsonl_em_utf8_com_campos_exatos(
 
     evento = registro.registrar(
         "EVENTO_TESTE",
-        7,
+        [0, 7, 0],
         {"nomeAluno": "João", "valor": "10.50"},
     )
 
@@ -26,13 +26,13 @@ def test_registra_jsonl_em_utf8_com_campos_exatos(
     assert set(evento_gravado) == {
         "agencia",
         "tipo",
-        "timestampLamport",
+        "timestampVetorial",
         "horaParede",
         "detalhes",
     }
     assert evento_gravado["agencia"] == "agencia-1"
     assert evento_gravado["tipo"] == "EVENTO_TESTE"
-    assert evento_gravado["timestampLamport"] == 7
+    assert evento_gravado["timestampVetorial"] == [0, 7, 0]
     assert evento_gravado["detalhes"]["nomeAluno"] == "João"
     assert datetime.fromisoformat(evento_gravado["horaParede"]).tzinfo is not None
     assert linhas[0] in capsys.readouterr().out  # type: ignore[attr-defined]
@@ -41,8 +41,8 @@ def test_registra_jsonl_em_utf8_com_campos_exatos(
 def test_acrescenta_um_objeto_por_linha(tmp_path: Path) -> None:
     registro = RegistroEventos(agencia_id=0, diretorio_dados=tmp_path)
 
-    registro.registrar("PRIMEIRO", 1)
-    registro.registrar("SEGUNDO", 2, {"ok": True})
+    registro.registrar("PRIMEIRO", [1, 0, 0])
+    registro.registrar("SEGUNDO", [2, 0, 0], {"ok": True})
 
     linhas = registro.caminho.read_text(encoding="utf-8").splitlines()
     assert [json.loads(linha)["tipo"] for linha in linhas] == ["PRIMEIRO", "SEGUNDO"]

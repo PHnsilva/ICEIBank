@@ -1,0 +1,3 @@
+{"agencia":"agencia-0","tipo":"CRIAR_CONTA","timestampVetorial":[1,0,0],"horaParede":"2026-10-05T00:41:20.135584Z","detalhes":{"idConta":0,"nomeAluno":"Aluno 0","saldo":"100.00"}}
+{"agencia":"agencia-0","tipo":"TRANSFERENCIA_DEBITO","timestampVetorial":[2,0,0],"horaParede":"2026-10-05T00:41:22.188060Z","detalhes":{"idOrigem":0,"idDestino":1,"valor":"15.00","idTransferencia":"905a356a-db28-485e-9444-e98798c5cef6","saldo":"85.00"}}
+{"agencia":"agencia-0","tipo":"TRANSFERENCIA_PUBLICADA","timestampVetorial":[3,0,0],"horaParede":"2026-10-05T00:41:22.191282Z","detalhes":{"idOrigem":0,"idDestino":1,"valor":"15.00","idTransferencia":"905a356a-db28-485e-9444-e98798c5cef6","agenciaDestino":1}}

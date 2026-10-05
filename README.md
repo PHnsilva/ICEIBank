@@ -1,16 +1,17 @@
 # ICEIBank
 
-Sistema bancário distribuído acadêmico em Python/FastAPI. Sprint 1 na branch
-`sprint1/desenvolvimento`: seções 1–12, frontend, JWT e histórico por conta.
-O vídeo de apresentação está fora desta entrega. O PR não deve ser mesclado em `main`.
+Sistema bancário distribuído acadêmico em **Python/FastAPI**. A Sprint 2 evolui a
+Sprint 1 no mesmo repositório: substitui Lamport por relógio vetorial e crédito
+remoto REST por Publish/Subscribe com RabbitMQ. JWT, frontend, particionamento e
+histórico por conta continuam funcionando. Contas e saldos continuam em memória.
 
-O particionamento continua `id_conta % 3`; o deslocamento pessoal 78 define:
+O [PR #1](https://github.com/PHnsilva/ICEIBank/pull/1) da Sprint 1 foi integrado à
+`main`; suas evidências permanecem em `evidencias/sprint1/`. A evolução está na
+branch `sprint2/desenvolvimento`, sem merge automático. O vídeo da entrega
+anterior era uma pendência fora do escopo; não se afirma sua entrega externa.
 
-| Agência | Porta | Frontend/API | Contas de exemplo |
-| ---: | ---: | --- | --- |
-| 0 | 4078 | http://localhost:4078 | 0, 3 |
-| 1 | 4079 | http://localhost:4079 | 1, 4 |
-| 2 | 4080 | http://localhost:4080 | 2, 5 |
+Referência: [roteiro da Sprint 2](docs/Roteiro_Projeto_Sprint2_ICEIBank.md).
+Os exemplos Node.js foram adaptados para Python, conforme a seção 9.
 
 ## Preparação no Windows PowerShell
 
@@ -22,133 +23,180 @@ python -m playwright install chromium
 python scripts/configurar_demo.py
 ```
 
-A última etapa cria `.env` com duas chaves aleatórias distintas e senha Argon2id.
-Ela recusa sobrescrever um arquivo existente. O login **acadêmico local** é
-`aluno` / `iceibank-sprint1`. Nunca reutilize essa senha em outro ambiente.
-As três instâncias leem o mesmo `.env`; `.env.example` documenta as variáveis.
-Para somente executar o sistema, basta instalar `agencia/requirements.txt`.
+O gerador cria `.env` com chaves distintas, senha Argon2id e URL do RabbitMQ local;
+recusa sobrescrever configuração existente. Login acadêmico local:
+`aluno` / `iceibank-sprint1`. Não versione `.env` nem a URL com credenciais reais.
+
+## RabbitMQ: CloudAMQP ou alternativa local
+
+Para CloudAMQP, crie a instância conforme a seção 4.1 do roteiro e use sua URL
+AMQPS em cada terminal das agências, ou no `.env` local:
+
+```powershell
+$env:RABBITMQ_URL = "amqps://usuario:senha@host.cloudamqp.com/vhost"
+```
+
+Sem URL válida a aplicação recusa iniciar. O painel CloudAMQP oferece RabbitMQ
+Manager. Esta entrega foi validada com RabbitMQ **local real**, alternativa
+permitida pelo roteiro; não se afirma criação ou validação de uma conta CloudAMQP.
+
+Para RabbitMQ local portátil, abra um terminal e mantenha-o em execução:
+
+```powershell
+./scripts/iniciar_rabbitmq_local.ps1
+```
+
+O script baixa distribuições oficiais RabbitMQ 4.3.6/Erlang 28.3 para `.local/`
+(ignoradas pelo Git), sem instalar serviço ou mudar o PATH global. O broker e
+a administração escutam somente em loopback. Manager:
+http://127.0.0.1:15672, login acadêmico local `guest` / `guest`.
+
+Também é possível usar a alternativa Docker do roteiro, vinculada ao loopback:
+
+```powershell
+docker run -d --name rabbitmq-iceibank -p 127.0.0.1:5672:5672 -p 127.0.0.1:15672:15672 rabbitmq:3-management
+```
+
+Execute somente uma alternativa nas mesmas portas. A aplicação declara a
+exchange topic durável `iceibank.eventos`, três filas duráveis
+`fila-agencia-0/1/2` e bindings `agencia.<id>.creditar`. Todas as filas são
+declaradas antes de publicar, inclusive se uma agência nunca iniciou.
 
 ## Execução das três agências
 
-Abra três terminais na raiz do projeto, com o ambiente virtual ativado, e execute
-um comando em cada terminal:
+O offset pessoal 78 é preservado; a agência de uma conta é `id_conta % 3`.
+Em três terminais na raiz, com o ambiente virtual ativado:
 
 ```powershell
-$env:AGENCIA_ID="0"; python agencia/executar.py
-$env:AGENCIA_ID="1"; python agencia/executar.py
-$env:AGENCIA_ID="2"; python agencia/executar.py
+$env:RABBITMQ_URL="amqp://guest:guest@127.0.0.1:5672/"
+$env:AGENCIA_ID="0"; python agencia/executar.py # porta 4078
+$env:AGENCIA_ID="1"; python agencia/executar.py # porta 4079, em outro terminal
+$env:AGENCIA_ID="2"; python agencia/executar.py # porta 4080, em outro terminal
 ```
 
-Abra http://localhost:4078 e faça login. Selecione a agência; use **Abrir conta de
-demonstração** para criar as contas 0 e 3 na agência 0, conta 1 na agência 1 e conta
-2 na agência 2. Nenhuma conta é pré-criada em execução normal.
+Abra http://localhost:4078, faça login e selecione a agência. Crie as contas de
+demonstração antes de movimentar: 0 e 3 na Agência 0, 1 na Agência 1, 2 na Agência 2.
+O frontend oferece criação, saldo, depósito, saque, transferência local/remota e
+histórico paginado. Troca de agência limpa a seleção; expiração/401 limpa a sessão.
+O JWT fica apenas em memória no navegador; erros da API aparecem na interface.
 
-Consulte a conta de origem, escolha depósito, saque ou o tipo de transferência e
-confirme o valor. A agência de destino é determinada pelo número da conta. Consulte
-**Histórico de transações** para ver os eventos; use **Carregar mais** para páginas
-adicionais. Erros HTTP e de rede aparecem na própria tela. Trocar agência limpa a
-conta selecionada; sair, expirar ou recarregar a página exige novo login.
+## Contrato e comportamento das transferências
 
-As contas e seu histórico consultável ficam somente em memória. Reiniciar apaga
-esse estado; os logs JSONL em `agencia/data` permanecem para análise da linha do tempo.
+As rotas bancárias exigem Bearer JWT. Login, frontend e `/config` são públicos;
+Swagger está em `/docs`. Dinheiro usa Decimal e strings com duas casas decimais.
 
-## API e autenticação
-
-A documentação interativa está em `/docs`; o contrato OpenAPI está em `/openapi.json`.
-O frontend e `/config` são públicos. As rotas bancárias exigem Bearer JWT.
-
-```powershell
-Get-Date
-$base = "http://localhost:4078"
-$login = Invoke-RestMethod "$base/auth/login" -Method Post -ContentType "application/json" -Body '{"usuario":"aluno","senha":"iceibank-sprint1"}'
-$headers = @{ Authorization = "Bearer $($login.access_token)" }
-Invoke-RestMethod "$base/contas" -Method Post -Headers $headers -ContentType "application/json" -Body '{"id":0,"nomeAluno":"Ana","saldoInicial":"100.00"}'
-Invoke-RestMethod "$base/contas/0" -Headers $headers
-Invoke-RestMethod "$base/contas/0/historico" -Headers $headers | ConvertTo-Json -Depth 8
-```
-
-| Método e rota | Corpo / resultado |
+| Método e rota | Finalidade |
 | --- | --- |
-| `POST /auth/login` | `{"usuario":"aluno","senha":"..."}` → `access_token`, `token_type`, `expires_in` |
-| `POST /contas` | `{"id":0,"nomeAluno":"Ana","saldoInicial":"100.00"}` |
-| `GET /contas/{id}` | `id`, `nomeAluno`, `saldo` |
-| `POST /contas/{id}/depositar` | `{"valor":"25.00"}` |
-| `POST /contas/{id}/sacar` | `{"valor":"10.00"}` |
-| `POST /transferencias` | `{"idOrigem":0,"idDestino":1,"valor":"30.00"}` |
-| `GET /contas/{id}/historico?offset=0&limite=50` | `idConta`, `saldoAtual`, `eventos`, `total`, `offset`, `limite` |
-| `POST /contas/{id}/creditar-remoto` | Exclusivo das agências; JWT de serviço vinculado ao corpo e destino |
+| `POST /auth/login` | Emitir JWT a partir de usuário/senha |
+| `POST /contas` | Criar conta (`id`, `nomeAluno`, `saldoInicial`) |
+| `GET /contas/{id}` | Consultar saldo |
+| `POST /contas/{id}/depositar` ou `/sacar` | Movimentar `valor` positivo |
+| `POST /transferencias` | Transferir (`idOrigem`, `idDestino`, `valor`) |
+| `GET /contas/{id}/historico?offset=0&limite=50` | Histórico por conta; limite 1–100 |
 
-Dinheiro usa `Decimal` no backend e strings com duas casas nas respostas.
-Histórico: ordem cronológica de registro do processo atual; limite 1–100,
-offset ≥ 0; cada evento contém `agencia`, `tipo`, `timestampLamport`, `horaParede`
-UTC e `detalhes`. Débitos e créditos são atribuídos à conta afetada, sem incluir
-movimentações de outras contas.
+**Local:** débito e crédito no mesmo processo; HTTP 200, `status=concluida` e
+saldos confirmados. Destino local inexistente retorna 404 e registra estorno.
 
-Códigos relevantes: **400** agência incorreta/saldo insuficiente; **401** token
-faltante, inválido ou expirado/login inválido; **404** conta ausente; **409** conta
-duplicada; **422** dados inválidos; **502** transferência remota não confirmada.
-401 inclui `WWW-Authenticate: Bearer` e ocorre antes de alterar saldo ou Lamport.
+**Remota:** débito na origem, incremento do envio e publicação de mensagem
+persistente na routing key do destino. O broker confirma a publicação; HTTP 200
+retorna `status=publicada`, `vetorEnvio` e `idTransferencia`, sem `saldoDestino`.
+Isso não confirma o crédito. A interface orienta consultar o destino depois.
+O consumidor combina o vetor recebido e aplica o crédito antes de ack manual.
+A rota `/contas/{id}/creditar-remoto` foi removida.
 
-Tokens de usuário duram 900 segundos por padrão. `JWT_TTL_SECONDS` aceita 1–86400.
-Tokens entre agências duram 30 segundos e usam chave separada, origem, audiência do
-destino e hash do caminho/corpo. A senha e as chaves nunca são enviadas ao frontend.
-O operador acadêmico tem acesso a todas as contas; não há controle de propriedade
-por cliente. HTTP é restrito a loopback; uma implantação em rede exigiria HTTPS/TLS.
-JWT assina, não criptografa, e não implementa revogação/replay/idempotência nesta etapa.
+O crédito pelo broker não carrega JWT HTTP. A confiança é nas credenciais,
+vhost e permissões AMQP; o consumidor valida mensagem, valores, origem e partição.
+Tokens de serviço HTTP da Sprint 1 ficaram apenas como código de consulta; não
+são utilizados no consumidor. AMQPS mantém a validação TLS padrão do cliente.
 
-## Limitação conhecida das transferências remotas
+**Limitações do roteiro:** reiniciar uma agência apaga contas e histórico em
+memória. A mensagem retida chega, mas pode encontrar a conta ausente. A DLQ
+preserva o crédito rejeitado; não restaura o saldo da origem. Falha de publicação
+retorna 502 com débito mantido e resultado possivelmente incerto. Não há
+persistência de contas, compensação distribuída ou garantia de execução única.
+O identificador correlaciona os eventos; não implementa idempotência.
 
-A origem é debitada antes do contato HTTP com o destino. Se a agência remota estiver
-indisponível ou rejeitar o crédito, a API devolve HTTP 502 e registra
-`TRANSFERENCIA_FALHOU`, mas não restaura o débito. A inconsistência é intencional
-nesta Sprint e será tratada na Sprint 4. Não há 2PC, Saga, repetição automática,
-compensação remota nem idempotência. A tela mostra esse erro e atualiza o saldo;
-consulte a conta antes de repetir uma operação cujo resultado ficou incerto.
+## Relógio vetorial e linha do tempo
 
-## Linha do tempo unificada
-
-Depois de executar operações, rode na pasta `agencia`:
+O relógio tem três posições: local/envio incrementam a posição própria;
+recebimento mescla pelo máximo e incrementa a posição local. Logs JSONL em
+`agencia/data/` usam `timestampVetorial`, agência, tipo, hora UTC e detalhes.
+O registrador copia snapshots para evitar alterar timestamps já registrados.
 
 ```powershell
 Get-Date
-python mesclar_logs.py
+python agencia/mesclar_logs.py
+# Ou analisar somente uma execução, sem misturar processos reiniciados:
+python agencia/mesclar_logs.py --dados caminho/dos/logs/desta-execucao
 ```
 
-O script ordena por timestamp Lamport, mostra todos os campos e marca empates entre
-agências. `horaParede` é somente critério secundário de apresentação e não prova
-causalidade. As respostas das seções 6.4, 8.3 e 10 foram preservadas em [RESPOSTAS.md](RESPOSTAS.md).
+Hora de parede ordena a apresentação; a comparação vetorial determina causalidade
+e identifica pares concorrentes entre agências diferentes. Logs Lamport antigos
+permanecem no disco e são excluídos da análise com aviso. Vetores pressupõem
+identidades/contadores contínuos: use logs de uma execução para comparar causalidade,
+sem misturar reinícios que zeram o relógio. O script não inventa concorrência
+a partir de empates Lamport e recusa regressão/repetição do contador local,
+evitando tratar reinícios detectados como uma execução contínua.
 
-## Testes e evidências reproduzíveis
+## Funcionalidade adicional da Sprint 2
 
-Encerre as agências manuais antes dos testes de navegador: a suíte recusa portas
-ocupadas e inicia seus próprios três processos nas portas oficiais, com chaves
-aleatórias e dados temporários. Ela encerra somente os processos que criou.
+Dead-letter exchange topic durável `iceibank.nao-processadas`, com uma DLQ
+`fila-agencia-<id>.nao-processadas` por agência. Falha de crédito rejeita e
+reenfileira na primeira entrega; falha na redelivery rejeita sem requeue e segue
+à DLQ. Erro interno inesperado segue diretamente à DLQ. A mensagem fica disponível
+no Manager com `x-death`, sem reprocessamento automático. Detalhes e respostas
+conceituais estão na seção Sprint 2 de [RESPOSTAS.md](RESPOSTAS.md).
+
+Filas preexistentes sem a configuração DLX não aceitam mudança de argumentos:
+use um vhost novo para esta sprint ou migre filas vazias conscientemente no
+Manager. A aplicação não apaga filas ou mensagens para contornar incompatibilidade.
+
+## Testes, resiliência e evidências reais
+
+Encerre as agências manuais antes dos testes: a suíte recusa portas ocupadas.
+Para o broker local, defina:
 
 ```powershell
-Get-Date
-python -m pytest agencia/tests tests/e2e -q
+$env:RABBITMQ_URL_TESTES="amqp://guest:guest@127.0.0.1:5672/"
+$env:RABBITMQ_MANAGEMENT_URL_TESTES="http://127.0.0.1:15672"
+./scripts/verificar_sprint2.ps1
 ```
 
-Para também salvar a verificação com `Get-Date`, execute
-`./scripts/verificar_sprint1.ps1`. O relatório fica em
-`evidencias/sprint1/verificacao.txt`, e o teste do ciclo completo salva os saldos e
-históricos reais em `evidencias/sprint1/fluxo-tres-agencias.json`.
+O ambiente cria um vhost aleatório exclusivo, usa chaves e contas de teste, inicia
+três agências reais e remove somente o vhost/processos criados por ele. Também
+aceita `RABBITMQ_URL_TESTES` apontando a um vhost exclusivo previamente criado;
+sem Management URL, as inspeções do Manager não são realizadas, embora a
+integração AMQP continue real. A verificação registrada desta entrega inclui
+Manager, durabilidade, bindings e DLQ. A URL de testes nunca deve apontar a filas
+de trabalho ou contas reais. Credenciais não são exibidas nos relatórios.
 
-Os testes de backend verificam regras monetárias, particionamento, logs, Lamport,
-JWT e histórico. Os testes Playwright executam no Chromium real e conferem saldos
-nas três APIs, erros, logout, sessão expirada, layout móvel e histórico.
-As capturas são produzidas apenas depois das asserções correspondentes passarem.
-Os testes de Swagger usam os assets oficiais de documentação servidos via CDN;
-requerem acesso à internet. O frontend bancário não depende desses assets.
+```powershell
+./scripts/demonstrar_sprint2.ps1 transferencia
+./scripts/demonstrar_sprint2.ps1 resiliencia
+./scripts/demonstrar_sprint2.ps1 causal
+./scripts/demonstrar_sprint2.ps1 adicional
+```
 
-- [Checklist da Sprint](CHECKLIST_SPRINT1.md)
-- [Respostas e justificativas](RESPOSTAS.md)
-- [Índice e método das evidências](evidencias/sprint1/README.md)
+Cada demonstração gera logs, resultados JSON e saída de terminal reais em
+`evidencias/sprint2/`, com Get-Date. Capture a tela do terminal após a execução.
+O cenário de resiliência termina/reinicia o processo de destino, sem restaurar
+contas. O cenário causal comprova criações concorrentes e débito anterior ao crédito.
+As capturas da regressão são produzidas pelo Chromium após as asserções e ficam
+em `evidencias/sprint2/regressao/`; os PNGs da Sprint 1 são preservados.
 
-## Fluxo Git
+- [Checklist Sprint 2](CHECKLIST_SPRINT2.md)
+- [Evidências Sprint 2](evidencias/sprint2/README.md)
+- [Checklist histórico Sprint 1](CHECKLIST_SPRINT1.md)
+- [Evidências históricas Sprint 1](evidencias/sprint1/README.md)
 
-Commits separados para autenticação, frontend, histórico, evidências/documentação e
-correções finais na branch `sprint1/desenvolvimento`. O PR existente para `main`
-permanece em draft enquanto o vídeo estiver pendente, pois a condição solicitada
-para marcar pronto é a conclusão integral da Sprint. O vídeo está fora deste
-trabalho. Não há merge em `main`.
+## Uso de IA e referências
+
+Codex (OpenAI) apoiou implementação, testes e documentação. A declaração está em
+`RESPOSTAS.md`; o autor precisa revisar e conseguir explicar a entrega.
+Commits incrementais separam relógio, mensageria, causalidade, funcionalidade
+adicional, documentação e evidências, com datas reais do trabalho.
+
+Referências: [aio-pika](https://docs.aio-pika.com/quick-start.html),
+[confirmações RabbitMQ](https://www.rabbitmq.com/docs/confirms),
+[DLX](https://www.rabbitmq.com/docs/dlx),
+[compatibilidade Erlang/RabbitMQ](https://www.rabbitmq.com/docs/which-erlang).

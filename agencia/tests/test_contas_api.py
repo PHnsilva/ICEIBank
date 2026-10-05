@@ -44,7 +44,7 @@ def test_cria_e_consulta_conta_com_saldo_monetario_consistente(
 
     evento = json.loads((tmp_path / "eventos-agencia-0.jsonl").read_text(encoding="utf-8"))
     assert evento["tipo"] == "CRIAR_CONTA"
-    assert evento["timestampLamport"] == 1
+    assert evento["timestampVetorial"] == [1, 0, 0]
     assert evento["detalhes"]["saldo"] == "100.00"
 
 
@@ -113,7 +113,7 @@ def test_deposita_e_saca_com_novos_eventos(cliente: TestClient, tmp_path: Path) 
         for linha in (tmp_path / "eventos-agencia-0.jsonl").read_text(encoding="utf-8").splitlines()
     ]
     assert [evento["tipo"] for evento in eventos] == ["CRIAR_CONTA", "DEPOSITO", "SAQUE"]
-    assert [evento["timestampLamport"] for evento in eventos] == [1, 2, 3]
+    assert [evento["timestampVetorial"] for evento in eventos] == [[1, 0, 0], [2, 0, 0], [3, 0, 0]]
     assert eventos[-1]["detalhes"]["saldo"] == "104.50"
 
 

@@ -1,0 +1,7 @@
+INFO:     Started server process [8144]
+INFO:     Waiting for application startup.
+[Agência 1] RabbitMQ: exchange topic iceibank.eventos; consumidor ativo.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:4079 (Press CTRL+C to quit)
+{"agencia":"agencia-1","tipo":"CRIAR_CONTA","timestampVetorial":[0,1,0],"horaParede":"2026-10-05T00:52:01.458886Z","detalhes":{"idConta":1,"nomeAluno":"Aluno 1","saldo":"100.00"}}
+{"agencia":"agencia-1","tipo":"TRANSFERENCIA_CREDITO_REMOTO","timestampVetorial":[3,2,0],"horaParede":"2026-10-05T00:52:01.467597Z","detalhes":{"idDestino":1,"idConta":1,"idOrigem":0,"valor":"15.00","origemAgencia":0,"idTransferencia":"7831633f-8e93-40c1-934a-522d39a553cc","saldo":"115.00"}}
