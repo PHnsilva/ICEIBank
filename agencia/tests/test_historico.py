@@ -1,12 +1,11 @@
-import httpx
 from fastapi.testclient import TestClient
 
-from agencia.app.auth import token_agencia
+from agencia.app.services.creditos import processar_credito
 from agencia.app.main import criar_aplicacao
 
 
-def cliente(tmp_path, agencia=0, transporte=None):
-    c = TestClient(criar_aplicacao(agencia, tmp_path, transporte_http=transporte))
+def cliente(tmp_path, agencia=0):
+    c = TestClient(criar_aplicacao(agencia, tmp_path))
     token = c.post("/auth/login", json={"usuario": "aluno", "senha": "senha-teste"}).json()["access_token"]
     c.headers["Authorization"] = "Bearer " + token
     return c
@@ -26,7 +25,7 @@ def test_historico_isola_contas_e_ordena_operacoes(tmp_path):
         h = c.get("/contas/0/historico").json()
         assert h["saldoAtual"] == "85.00"
         assert [e["tipo"] for e in h["eventos"]] == ["CRIAR_CONTA", "DEPOSITO", "SAQUE", "TRANSFERENCIA_DEBITO"]
-        assert [e["timestampLamport"] for e in h["eventos"]] == [1, 3, 4, 5]
+        assert [e["timestampVetorial"] for e in h["eventos"]] == [[1, 0, 0], [3, 0, 0], [4, 0, 0], [5, 0, 0]]
         h = c.get("/contas/3/historico").json()
         assert h["saldoAtual"] == "120.00"
         assert [e["tipo"] for e in h["eventos"]] == ["CRIAR_CONTA", "TRANSFERENCIA_CREDITO"]
@@ -41,7 +40,8 @@ def test_historico_isola_contas_e_ordena_operacoes(tmp_path):
 
 
 def test_historico_falha_remota_nao_simula_compensacao(tmp_path):
-    with cliente(tmp_path, transporte=httpx.MockTransport(lambda r: httpx.Response(503))) as c:
+    with cliente(tmp_path) as c:
+        c.app.state.mensageria.falhar = True
         criar(c, 0)
         assert c.post("/transferencias", json={"idOrigem": 0, "idDestino": 1, "valor": "5.00"}).status_code == 502
         h = c.get("/contas/0/historico").json()
@@ -53,13 +53,11 @@ def test_historico_falha_remota_nao_simula_compensacao(tmp_path):
 def test_historico_credito_remoto_e_reinicio(tmp_path):
     with cliente(tmp_path, agencia=1) as c:
         criar(c, 1)
-        corpo = {"valor": "2.50", "timestampLamport": 4, "origemAgencia": 0}
-        rota = "/contas/1/creditar-remoto"
-        token = token_agencia(c.app.state.auth, 0, 1, rota, corpo)
-        assert c.post(rota, json=corpo, headers={"Authorization": "Bearer " + token}).status_code == 200
+        corpo = {"idConta": 1, "valor": "2.50", "vetorEnvio": [4, 0, 0], "origemAgencia": 0}
+        assert c.portal.call(processar_credito, c.app.state.estado_agencia, corpo) is True
         h = c.get("/contas/1/historico").json()
         assert h["eventos"][-1]["tipo"] == "TRANSFERENCIA_CREDITO_REMOTO"
-        assert h["eventos"][-1]["timestampLamport"] == 5
+        assert h["eventos"][-1]["timestampVetorial"] == [4, 2, 0]
         assert h["saldoAtual"] == "102.50"
     with cliente(tmp_path, agencia=1) as novo:
         assert novo.get("/contas/1/historico").status_code == 404
@@ -82,4 +80,4 @@ def test_destino_local_ausente_historico_reconcilia_saldo(tmp_path):
         assert h["saldoAtual"] == "100.00"
         assert [e["tipo"] for e in h["eventos"]] == ["CRIAR_CONTA", "TRANSFERENCIA_DEBITO", "ESTORNO_LOCAL"]
         assert h["eventos"][-1]["detalhes"]["saldo"] == h["saldoAtual"]
-        assert [e["timestampLamport"] for e in h["eventos"]] == [1, 2, 3]
+        assert [e["timestampVetorial"] for e in h["eventos"]] == [[1, 0, 0], [2, 0, 0], [3, 0, 0]]

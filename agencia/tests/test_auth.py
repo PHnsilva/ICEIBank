@@ -22,14 +22,13 @@ def entrar(c):
     ("POST", "/contas/0/depositar", {"valor": 1}),
     ("POST", "/contas/0/sacar", {"valor": 1}),
     ("POST", "/transferencias", {}),
-    ("POST", "/contas/0/creditar-remoto", {}),
 ])
 def test_todas_rotas_exigem_token(cliente, metodo, rota, corpo):
     r = cliente.request(metodo, rota, json=corpo)
     assert r.status_code == 401
     assert r.headers["WWW-Authenticate"] == "Bearer"
     assert not cliente.app.state.estado_agencia.contas
-    assert cliente.app.state.estado_agencia.relogio.valor == 0
+    assert cliente.app.state.estado_agencia.relogio.valor == [0, 0, 0]
 
 
 def test_login_e_token_valido(cliente):
@@ -68,36 +67,15 @@ def test_rejeita_tokens_invalidos(cliente, caso):
     if caso == "expirado": assert "expirado" in r.json()["detail"]
 
 
-def test_usuario_nao_pode_creditar_remoto(cliente):
-    cliente.headers["Authorization"] = "Bearer " + entrar(cliente).json()["access_token"]
-    r = cliente.post("/contas/0/creditar-remoto", json={"valor": "1.00", "timestampLamport": 1, "origemAgencia": 1})
-    assert r.status_code == 401
-    assert cliente.app.state.estado_agencia.relogio.valor == 0
-
-
-@pytest.mark.parametrize("caso", ["valido", "valor-alterado", "origem-alterada", "destino-errado", "rota-alterada", "usuario"])
-def test_autenticacao_entre_agencias(cliente, caso):
-    corpo = {"valor": "1.00", "timestampLamport": 1, "origemAgencia": 1}
-    rota = "/contas/0/creditar-remoto"
-    token = token_agencia(cliente.app.state.auth, 1, 2 if caso == "destino-errado" else 0, rota, corpo)
-    if caso == "valor-alterado": corpo["valor"] = "100.00"
-    if caso == "origem-alterada": corpo["origemAgencia"] = 2
-    if caso == "rota-alterada": rota = "/contas/3/creditar-remoto"
-    if caso == "usuario": rota = "/contas/0"
-    if caso == "usuario": r = cliente.get(rota, headers={"Authorization": "Bearer " + token})
-    else: r = cliente.post(rota, json=corpo, headers={"Authorization": "Bearer " + token})
-    assert r.status_code == (404 if caso == "valido" else 401)
-    assert cliente.app.state.estado_agencia.relogio.valor == (2 if caso == "valido" else 0)
-
-
 def test_configuracao_sem_segredos_falha(monkeypatch):
     monkeypatch.delenv("JWT_SECRET")
     with pytest.raises(ValueError, match="Configure"):
         ConfiguracaoAuth.do_ambiente()
 
 
-def test_mensagem_agencia_corpo_nao_objeto_retorna_401(cliente):
-    token = emitir_token(cliente.app.state.auth.segredo_agencias, "agencia-1", "agencia-0", 30, tipo="agencia")
-    r = cliente.post("/contas/0/creditar-remoto", json=[], headers={"Authorization": "Bearer " + token})
-    assert r.status_code == 401
-    assert cliente.app.state.estado_agencia.relogio.valor == 0
+def test_rota_credito_http_removida(cliente):
+    assert cliente.post("/contas/0/creditar-remoto", json={}).status_code == 404
+    cliente.headers["Authorization"] = "Bearer " + entrar(cliente).json()["access_token"]
+    assert cliente.post("/contas/0/creditar-remoto", json={}).status_code == 404
+    assert "/contas/{id_conta}/creditar-remoto" not in cliente.get("/openapi.json").json()["paths"]
+    assert cliente.app.state.estado_agencia.relogio.valor == [0, 0, 0]

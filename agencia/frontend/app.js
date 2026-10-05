@@ -168,7 +168,7 @@ $("#operacao-form").addEventListener("submit", (event) => {
     }
     // A resposta da mutação já confirma o saldo: não transformar uma falha de leitura em falha da operação.
     mostrarConta(transferencia ? { ...contaAtual, saldo: resultado.saldoOrigem } : resultado);
-    avisar(transferencia ? `${resultado.mensagem}\nConta ${id} → Conta ${dados.destino} · ${moeda(resultado.valor)}\nSaldo da origem: ${moeda(resultado.saldoOrigem)} · Saldo do destino: ${moeda(resultado.saldoDestino)}` : `${dados.operacao === "depositar" ? "Depósito" : "Saque"} realizado com sucesso. Saldo: ${moeda(resultado.saldo)}.`);
+    avisar(transferencia ? `${resultado.mensagem}\nConta ${id} → Conta ${dados.destino} · ${moeda(resultado.valor)}\nSaldo da origem: ${moeda(resultado.saldoOrigem)}${resultado.status === "publicada" ? "\nO crédito será processado pelo destino. Consulte o saldo e o histórico naquela agência." : ` · Saldo do destino: ${moeda(resultado.saldoDestino)}`}` : `${dados.operacao === "depositar" ? "Depósito" : "Saque"} realizado com sucesso. Saldo: ${moeda(resultado.saldo)}.`);
   });
 });
 fetch("/config").then((r) => { if (!r.ok) throw new Error(); return r.json(); }).then((config) => {

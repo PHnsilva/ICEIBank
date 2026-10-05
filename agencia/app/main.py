@@ -1,9 +1,9 @@
 """Ponto de composição da aplicação FastAPI."""
 
 from pathlib import Path
+from contextlib import asynccontextmanager
 from typing import Any
 
-import httpx
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -18,6 +18,8 @@ from .controllers.transferencias_controller import router as transferencias_rout
 from .estado_agencia import EstadoAgencia
 from .services.registro_eventos import RegistroEventos
 from .services.relogio_vetorial import RelogioVetorial
+from .services.mensageria import MensageriaRabbitMQ
+from .services.creditos import processar_credito
 
 
 def _mensagem_validacao(tipo: str) -> str:
@@ -40,17 +42,28 @@ def _mensagem_validacao(tipo: str) -> str:
 def criar_aplicacao(
     agencia_id: int,
     diretorio_dados: Path | None = None,
-    transporte_http: httpx.AsyncBaseTransport | None = None,
-    timeout_http: float = 3.0,
+    mensageria=None,
 ) -> FastAPI:
     """Cria uma aplicação isolada para a agência informada."""
     agencia_id = validar_agencia_id(agencia_id)
+    broker = mensageria if mensageria is not None else MensageriaRabbitMQ.do_ambiente()
+
+    @asynccontextmanager
+    async def lifespan(app):
+        try:
+            await broker.iniciar(agencia_id, lambda corpo: processar_credito(app.state.estado_agencia, corpo))
+            yield
+        finally:
+            await broker.fechar()
+
     app = FastAPI(
         title=f"ICEIBank — Agência {agencia_id}",
         version="0.2.0",
         description="Sistema bancário distribuído acadêmico — Sprint 2.",
+        lifespan=lifespan,
     )
     app.state.auth = ConfiguracaoAuth.do_ambiente()
+    app.state.mensageria = broker
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[*URLS_AGENCIAS, *[f"http://127.0.0.1:{p}" for p in PORTAS_AGENCIAS]],
@@ -60,8 +73,6 @@ def criar_aplicacao(
         agencia_id=agencia_id,
         relogio=RelogioVetorial(agencia_id),
         registro=RegistroEventos(agencia_id, diretorio_dados),
-        transporte_http=transporte_http,
-        timeout_http=timeout_http,
     )
 
     @app.exception_handler(RequestValidationError)
