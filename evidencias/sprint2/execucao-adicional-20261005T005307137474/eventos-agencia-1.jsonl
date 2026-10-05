@@ -1,0 +1,4 @@
+{"agencia":"agencia-1","tipo":"CRIAR_CONTA","timestampVetorial":[0,1,0],"horaParede":"2026-10-05T00:53:25.366917Z","detalhes":{"idConta":1,"nomeAluno":"Aluno 1","saldo":"100.00"}}
+{"agencia":"agencia-1","tipo":"CREDITO_REMOTO_FALHOU","timestampVetorial":[3,1,0],"horaParede":"2026-10-05T00:53:29.377510Z","detalhes":{"idDestino":1,"idConta":1,"idOrigem":0,"valor":"15.00","origemAgencia":0,"idTransferencia":"4a35a5db-4640-4769-9292-a1285a987948","motivo":"conta não encontrada"}}
+{"agencia":"agencia-1","tipo":"CREDITO_REMOTO_FALHOU","timestampVetorial":[3,2,0],"horaParede":"2026-10-05T00:53:29.383325Z","detalhes":{"idDestino":1,"idConta":1,"idOrigem":0,"valor":"15.00","origemAgencia":0,"idTransferencia":"4a35a5db-4640-4769-9292-a1285a987948","motivo":"conta não encontrada"}}
+{"agencia":"agencia-1","tipo":"CRIAR_CONTA","timestampVetorial":[3,3,0],"horaParede":"2026-10-05T00:53:31.885034Z","detalhes":{"idConta":1,"nomeAluno":"Aluno 1","saldo":"1.00"}}

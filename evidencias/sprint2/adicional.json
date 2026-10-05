@@ -1,0 +1,82 @@
+{
+  "cenario": "adicional",
+  "verificadoEmUTC": "2026-10-05T00:53:07.137524+00:00",
+  "respostaTransferencia": {
+    "idOrigem": 0,
+    "idDestino": 1,
+    "valor": "15.00",
+    "idTransferencia": "4a35a5db-4640-4769-9292-a1285a987948",
+    "saldoOrigem": "85.00",
+    "tipo": "entre-agencias",
+    "status": "publicada",
+    "vetorEnvio": [
+      3,
+      0,
+      0
+    ],
+    "mensagem": "Transferência publicada para a agência de destino (entrega assíncrona)."
+  },
+  "contaAposReinicioHTTP": 404,
+  "mensagemNaDLQ": {
+    "idConta": 1,
+    "idOrigem": 0,
+    "valor": "15.00",
+    "vetorEnvio": [
+      3,
+      0,
+      0
+    ],
+    "origemAgencia": 0,
+    "idTransferencia": "4a35a5db-4640-4769-9292-a1285a987948"
+  },
+  "motivoDeadLetter": "rejected",
+  "deliveryMode": 2,
+  "saldoContaRecriada": "1.00",
+  "topologia": [
+    {
+      "nome": "fila-agencia-0",
+      "duravel": true,
+      "argumentos": {
+        "x-dead-letter-exchange": "iceibank.nao-processadas",
+        "x-queue-type": "classic"
+      }
+    },
+    {
+      "nome": "fila-agencia-0.nao-processadas",
+      "duravel": true,
+      "argumentos": {
+        "x-queue-type": "classic"
+      }
+    },
+    {
+      "nome": "fila-agencia-1",
+      "duravel": true,
+      "argumentos": {
+        "x-dead-letter-exchange": "iceibank.nao-processadas",
+        "x-queue-type": "classic"
+      }
+    },
+    {
+      "nome": "fila-agencia-1.nao-processadas",
+      "duravel": true,
+      "argumentos": {
+        "x-queue-type": "classic"
+      }
+    },
+    {
+      "nome": "fila-agencia-2",
+      "duravel": true,
+      "argumentos": {
+        "x-dead-letter-exchange": "iceibank.nao-processadas",
+        "x-queue-type": "classic"
+      }
+    },
+    {
+      "nome": "fila-agencia-2.nao-processadas",
+      "duravel": true,
+      "argumentos": {
+        "x-queue-type": "classic"
+      }
+    }
+  ]
+}

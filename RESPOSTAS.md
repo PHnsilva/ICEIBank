@@ -1,5 +1,9 @@
 # Respostas
 
+As seções iniciais abaixo registram a entrega histórica da Sprint 1. A evolução
+vigente está na seção **Sprint 2**, ao final; crédito REST e Lamport deixaram de
+ser usados pela aplicação atual.
+
 ## Seção 6.4 — Relógio lógico de Lamport
 
 1. Ao receber uma mensagem, a agência usa `max(local, recebido) + 1` para garantir
@@ -192,3 +196,119 @@ total final de R$ 415,00. Saída, datas e saldos estão em
 `evidencias/sprint1/verificacao.txt` e `evidencias/sprint1/fluxo-tres-agencias.json`.
 Permanece um aviso de depreciação do TestClient/Starlette já presente na base;
 nenhum teste falhou. As sete novas capturas foram conferidas visualmente.
+
+---
+
+## Sprint 2 — Parte B, seção 6.4: relógio vetorial
+
+1. Com dez agências, cada vetor passa de três para dez contadores. O tamanho da
+   mensagem e o trabalho de mesclar/comparar vetores crescem linearmente com o
+   número de participantes. Dez posições são pequenas neste exercício, mas um
+   sistema com muitos participantes precisaria considerar custo de rede,
+   armazenamento e associação estável entre posições e processos.
+2. `[3,1,0]` aconteceu antes de `[3,2,0]`: a primeira lista é menor ou igual
+   posição a posição, e há desigualdade estrita na posição 1. A comparação do
+   código retorna `ANTES`.
+3. `[3,1,0]` e `[1,3,0]` são concorrentes: o primeiro é maior na posição 0,
+   enquanto o segundo é maior na posição 1. Nenhum domina o outro; a comparação
+   retorna `CONCORRENTES`.
+
+## Sprint 2 — Parte C, seção 7.5: mensageria e resiliência
+
+1. No ensaio real de 04/10/2026, a conta 1 foi criada com 100,00 e a Agência 1
+   encerrada. A Agência 0 publicou 15,00 e respondeu HTTP 200 com
+   `status=publicada`, ficando com 85,00. O RabbitMQ manteve a mensagem na fila
+   sem consumidores. Quando a Agência 1 voltou, `GET /contas/1` retornou 404:
+   o novo processo não carregou as contas do anterior. O consumidor recebeu o
+   vetor `[3,0,0]`, registrou `CREDITO_REMOTO_FALHOU` com motivo
+   `conta não encontrada` e, após uma nova entrega imediata malsucedida, rejeitou
+   definitivamente a mensagem. A DLQ preservou o crédito com
+   `x-death.reason=rejected`. A mensagem foi entregue; a falha foi a perda do
+   estado em memória, não o desaparecimento da publicação. Os resultados reais
+   estão em `evidencias/sprint2/resiliencia.json`, nos logs e no print correspondente.
+2. Na Sprint 1, o destino desligado fazia a chamada HTTP falhar, retornando 502
+   após o débito. Agora o destino pode estar desligado e a publicação ainda
+   funcionar: a fila durável retém a mensagem persistente até reconectar.
+   Entretanto, publicação não confirma crédito, e durabilidade do broker não
+   persiste as contas. Ainda pode haver dinheiro debitado sem crédito, e falhas
+   de publicação/acknowledgement podem deixar resultados incertos ou provocar
+   redelivery. Não há compensação distribuída, persistência de contas ou
+   garantia de processamento exatamente uma vez nesta etapa.
+3. O consumidor não recebe JWT HTTP; a autenticação ocorre na conexão AMQP, e
+   as permissões do broker delimitam quem pode configurar, publicar e consumir.
+   Isso constitui uma fronteira de confiança, não uma ausência total de
+   autenticação. Quem obtiver credenciais com permissão de publicação poderá
+   produzir créditos: o consumidor valida valores, vetor, origem e partição,
+   mas não prova criptograficamente a identidade de cada produtor. No ensaio,
+   o RabbitMQ usa `guest` somente em loopback e um vhost aleatório exclusivo.
+   Para CloudAMQP, a URL AMQPS fica no ambiente/.env, sem ser versionada;
+   credenciais e permissões devem ser restritas aos participantes autorizados.
+   Tokens JWT de usuário continuam obrigatórios nas operações REST bancárias.
+
+## Sprint 2 — Parte D, seção 8.3: linha do tempo causal
+
+1. O vetor registra conhecimento por participante. Local e envio incrementam
+   a posição da agência; recebimento faz máximo componente a componente e
+   incrementa a posição local. Assim, `V1 < V2` em ordem parcial representa
+   precedência causal, enquanto dois vetores incomparáveis representam
+   concorrência. O escalar Lamport não carrega essas diferenças por participante;
+   sua ordem estrita não prova causalidade na direção inversa.
+2. No ensaio próprio, `CRIAR_CONTA` da Agência 0 com `[1,0,0]` e
+   `CRIAR_CONTA` da Agência 1 com `[0,1,0]` apareceram como concorrentes.
+   Foram requisições independentes, sem transferência ligando as criações.
+   A hora de parede exibida em sequência não cria causalidade. Já o débito
+   `[2,0,0]` aconteceu antes do crédito remoto `[3,2,0]`, e esse par não foi
+   listado como concorrente. `evidencias/sprint2/causal.json` registra as
+   verificações; `linha-do-tempo-causal.png` mostra a saída do script Python.
+3. Comparar todos os pares custa O(n² × a), em que `a` é o número de agências
+   (três fixas aqui). Milhões de eventos gerariam um volume impraticável de
+   comparações e de saída. É possível restringir a investigação a uma execução,
+   intervalo, transação ou conjunto de participantes; manter índices vetoriais
+   e fronteiras de eventos; e consultar um grafo causal conforme a necessidade.
+   Dividir a análise em janelas exige preservar as dependências entre elas.
+   Se a pergunta exigir enumerar todos os pares concorrentes, a própria resposta
+   pode ter tamanho quadrático: um índice não elimina esse custo de saída.
+
+## Sprint 2 — Funcionalidade adicional: fila de mensagens não processadas
+
+O RabbitMQ declara uma exchange topic durável `iceibank.nao-processadas` e uma
+DLQ durável por agência, `fila-agencia-<id>.nao-processadas`. Cada fila principal
+tem `x-dead-letter-exchange=iceibank.nao-processadas`; a routing key original
+`agencia.<id>.creditar` direciona a mensagem para a DLQ correspondente.
+
+Crédito bem processado recebe ack manual. Se a mensagem é válida, mas a conta
+não existe, o recebimento e a falha são registrados e o consumidor rejeita com
+requeue na primeira entrega. Se a nova entrega também falhar (`redelivered`),
+rejeita sem requeue: o broker move a mensagem para a DLQ. Mensagens inválidas
+também têm esse limite; erros internos inesperados seguem diretamente à DLQ.
+Não há ciclo infinito nem consumidor automático da DLQ. Uma mensagem já marcada
+como redelivery após interrupção também não recebe uma terceira tentativa.
+
+O ensaio adicional confirmou mensagem persistente (`delivery_mode=2`) e
+`x-death.reason=rejected`. Depois de recriar a conta 1 com 1,00, o saldo ficou
+em 1,00: a mensagem retida na DLQ não foi reaplicada silenciosamente. A DLQ
+preserva material para diagnóstico, mas não devolve dinheiro à origem nem
+garante consistência. Reprocessamento com idempotência e ações compensatórias
+permanece fora do escopo desta sprint.
+
+Implementação em `agencia/app/services/mensageria.py`; teste real em
+`tests/e2e/test_sprint2.py`; demonstração em `scripts/demonstrar_sprint2.ps1 adicional`;
+evidências em `evidencias/sprint2/adicional.json` e `funcionalidade-adicional.png`.
+A implementação adicional tem commit próprio.
+
+## Sprint 2 — Continuidade e transparência
+
+Python/FastAPI, MVC, particionamento, Decimal, JWT, frontend e histórico foram
+mantidos. O frontend informa **publicação assíncrona** e orienta consultar o
+destino; não apresenta saldo de destino como se o crédito já estivesse aplicado.
+Os testes usam três servidores reais e RabbitMQ real. Dublês são usados somente
+nos testes isolados de backend; o cenário de integração e os prints não dependem deles.
+
+Foi utilizado **Codex (OpenAI)** para apoiar implementação, testes, documentação
+e captura das evidências. Os resultados documentados vêm das execuções reais
+registradas. O autor deve revisar o código e compreender as decisões antes da
+apresentação e entrega; esta declaração não afirma que essa revisão humana já ocorreu.
+
+Referências consultadas: [aio-pika — integração assíncrona](https://docs.aio-pika.com/quick-start.html),
+[RabbitMQ — confirmações](https://www.rabbitmq.com/docs/confirms) e
+[RabbitMQ — dead-letter exchanges](https://www.rabbitmq.com/docs/dlx).

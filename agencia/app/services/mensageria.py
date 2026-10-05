@@ -11,6 +11,7 @@ import aio_pika
 from ..config import NUMERO_AGENCIAS
 
 EXCHANGE = "iceibank.eventos"
+EXCHANGE_NAO_PROCESSADAS = "iceibank.nao-processadas"
 
 
 class FalhaPublicacao(RuntimeError):
@@ -36,10 +37,15 @@ class MensageriaRabbitMQ:
             self._exchange = await publicador.declare_exchange(EXCHANGE, aio_pika.ExchangeType.TOPIC, durable=True)
             consumidor = await self._conexao.channel()
             await consumidor.set_qos(prefetch_count=1)
+            await consumidor.declare_exchange(EXCHANGE_NAO_PROCESSADAS, aio_pika.ExchangeType.TOPIC, durable=True)
             filas = []
             # Todas as filas existem antes de publicar, inclusive destinos que nunca subiram.
             for id_fila in range(NUMERO_AGENCIAS):
-                fila = await consumidor.declare_queue(f"fila-agencia-{id_fila}", durable=True)
+                chave = f"agencia.{id_fila}.creditar"
+                nao_processadas = await consumidor.declare_queue(f"fila-agencia-{id_fila}.nao-processadas", durable=True)
+                await nao_processadas.bind(EXCHANGE_NAO_PROCESSADAS, routing_key=chave)
+                fila = await consumidor.declare_queue(f"fila-agencia-{id_fila}", durable=True,
+                    arguments={"x-dead-letter-exchange": EXCHANGE_NAO_PROCESSADAS})
                 await fila.bind(EXCHANGE, routing_key=f"agencia.{id_fila}.creditar")
                 filas.append(fila)
 
@@ -57,7 +63,8 @@ class MensageriaRabbitMQ:
                 if aplicado:
                     await mensagem.ack()
                 else:
-                    await mensagem.reject(requeue=False)
+                    # Uma segunda entrega é tentada; falhas repetidas seguem à DLQ.
+                    await mensagem.reject(requeue=not mensagem.redelivered)
 
             await filas[agencia_id].consume(receber, no_ack=False)
             print(f"[Agência {agencia_id}] RabbitMQ: exchange topic {EXCHANGE}; consumidor ativo.", flush=True)
