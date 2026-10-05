@@ -42,6 +42,7 @@ async def transferir(dados: TransferenciaSolicitada, request: Request) -> dict[s
             estado.registro.registrar("TRANSFERENCIA_CREDITO", estado.relogio.evento_local(),
                                       {**detalhes, "saldo": formatar_moeda(conta_destino.saldo)})
             return {**resultado, "tipo": "local", "status": "concluida",
+                    "saldoOrigem": formatar_moeda(origem.saldo),
                     "mensagem": "Transferência local realizada com sucesso.",
                     "saldoDestino": formatar_moeda(conta_destino.saldo)}
 

@@ -17,6 +17,7 @@ def carregar_eventos(pasta: Path | None = None) -> list[dict]:
     pasta = pasta or Path(__file__).resolve().parent / "data"
     eventos = []
     legados = 0
+    ultimo_local = {}
     for arquivo in sorted(pasta.glob("*.jsonl")):
         for numero, linha in enumerate(arquivo.read_text(encoding="utf-8").splitlines(), 1):
             if not linha.strip():
@@ -33,9 +34,14 @@ def carregar_eventos(pasta: Path | None = None) -> list[dict]:
                     raise ValueError("Agência inválida.")
                 if not isinstance(evento["detalhes"], dict) or not isinstance(evento["tipo"], str):
                     raise ValueError("Campos inválidos.")
+                id_agencia = int(evento["agencia"].rsplit("-", 1)[1])
+                local = evento["timestampVetorial"][id_agencia]
+                if local <= ultimo_local.get(evento["agencia"], -1):
+                    raise ValueError("Reinício ou ordem local inválida.")
+                ultimo_local[evento["agencia"]] = local
                 eventos.append(evento)
             except (ValueError, KeyError, TypeError):
-                raise ValueError(f"Evento inválido em {arquivo.name}, linha {numero}.") from None
+                raise ValueError(f"Evento inválido ou logs de reinícios misturados em {arquivo.name}, linha {numero}. Use --dados com logs de uma execução.") from None
     if legados:
         print(f"Aviso: {legados} eventos Lamport da Sprint 1 preservados e excluídos da análise vetorial.")
     return sorted(eventos, key=lambda e: datetime.fromisoformat(e["horaParede"].replace("Z", "+00:00")))

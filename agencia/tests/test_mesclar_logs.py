@@ -44,3 +44,10 @@ def test_erro_tem_arquivo_e_linha(tmp_path, texto):
 def test_logs_vazios_nao_inventam_concorrencia(capsys):
     imprimir_linha_do_tempo([])
     assert "nenhum par concorrente" in capsys.readouterr().out
+
+
+def test_reinicio_nao_produz_conclusao_causal_falsa(tmp_path):
+    eventos = [evento("agencia-1", [0, 1, 0]), evento("agencia-1", [3, 1, 0])]
+    (tmp_path / "agencia-1.jsonl").write_text("\n".join(map(json.dumps, eventos)), encoding="utf-8")
+    with pytest.raises(ValueError, match="reinícios misturados"):
+        carregar_eventos(tmp_path)

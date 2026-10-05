@@ -48,6 +48,16 @@ def test_publicacao_nao_afirma_credito_e_propaga_vetor(tmp_path):
         assert eventos[-1]["timestampVetorial"] == [3, 0, 0]
 
 
+def test_transferencia_para_propria_conta_mantem_saldo_e_resposta(tmp_path):
+    with cliente(tmp_path) as c:
+        criar(c, 0)
+        r = c.post("/transferencias", json={"idOrigem": 0, "idDestino": 0, "valor": "10.00"})
+        assert r.status_code == 200
+        assert r.json()["saldoOrigem"] == r.json()["saldoDestino"] == "100.00"
+        assert c.get("/contas/0").json()["saldo"] == "100.00"
+        assert not c.app.state.mensageria.publicadas
+
+
 def test_falha_publicacao_mantem_limitacao_e_registra_incerteza(tmp_path):
     with cliente(tmp_path) as c:
         criar(c, 0)
