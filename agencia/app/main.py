@@ -17,7 +17,7 @@ from .controllers.contas_controller import router as contas_router
 from .controllers.transferencias_controller import router as transferencias_router
 from .estado_agencia import EstadoAgencia
 from .services.registro_eventos import RegistroEventos
-from .services.relogio_lamport import RelogioLamport
+from .services.relogio_vetorial import RelogioVetorial
 
 
 def _mensagem_validacao(tipo: str) -> str:
@@ -47,8 +47,8 @@ def criar_aplicacao(
     agencia_id = validar_agencia_id(agencia_id)
     app = FastAPI(
         title=f"ICEIBank — Agência {agencia_id}",
-        version="0.1.0",
-        description="Sistema bancário distribuído acadêmico — Sprint 1.",
+        version="0.2.0",
+        description="Sistema bancário distribuído acadêmico — Sprint 2.",
     )
     app.state.auth = ConfiguracaoAuth.do_ambiente()
     app.add_middleware(
@@ -58,7 +58,7 @@ def criar_aplicacao(
     )
     app.state.estado_agencia = EstadoAgencia(
         agencia_id=agencia_id,
-        relogio=RelogioLamport(),
+        relogio=RelogioVetorial(agencia_id),
         registro=RegistroEventos(agencia_id, diretorio_dados),
         transporte_http=transporte_http,
         timeout_http=timeout_http,

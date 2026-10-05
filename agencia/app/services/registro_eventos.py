@@ -10,6 +10,7 @@ from threading import Lock
 from typing import Any
 
 from ..config import validar_agencia_id
+from .relogio_vetorial import validar_vetor
 
 
 class RegistroEventos:
@@ -30,16 +31,16 @@ class RegistroEventos:
     def registrar(
         self,
         tipo: str,
-        timestamp_lamport: int,
+        timestamp_vetorial: list[int],
         detalhes: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Grava um evento como um objeto JSON em uma única linha."""
         evento: dict[str, Any] = {
             "agencia": f"agencia-{self.agencia_id}",
             "tipo": tipo,
-            "timestampLamport": timestamp_lamport,
+            "timestampVetorial": validar_vetor(timestamp_vetorial),
             "horaParede": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            "detalhes": detalhes or {},
+            "detalhes": deepcopy(detalhes or {}),
         }
         linha = json.dumps(evento, ensure_ascii=False, separators=(",", ":"))
 

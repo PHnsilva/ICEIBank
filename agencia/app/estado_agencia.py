@@ -7,7 +7,7 @@ from decimal import Decimal
 import httpx
 
 from .services.registro_eventos import RegistroEventos
-from .services.relogio_lamport import RelogioLamport
+from .services.relogio_vetorial import RelogioVetorial
 
 
 @dataclass
@@ -25,7 +25,7 @@ class EstadoAgencia:
     def __init__(
         self,
         agencia_id: int,
-        relogio: RelogioLamport,
+        relogio: RelogioVetorial,
         registro: RegistroEventos,
         transporte_http: httpx.AsyncBaseTransport | None = None,
         timeout_http: float = 3.0,
