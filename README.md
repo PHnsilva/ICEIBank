@@ -6,14 +6,21 @@ remoto REST por Publish/Subscribe com RabbitMQ. JWT, frontend, particionamento e
 histórico por conta continuam funcionando. Contas e saldos continuam em memória.
 
 O [PR #1](https://github.com/PHnsilva/ICEIBank/pull/1) da Sprint 1 foi integrado à
-`main`; suas evidências permanecem em `evidencias/sprint1/`. A evolução está na
-branch `sprint2/desenvolvimento`, sem merge automático. O vídeo da entrega
+`main`; suas evidências permanecem em `evidencias/sprint1/`. A Sprint 2 também foi integrada à `main` pelo
+[PR #2](https://github.com/PHnsilva/ICEIBank/pull/2). O vídeo da entrega
 anterior era uma pendência fora do escopo; não se afirma sua entrega externa.
 
 Referência: [roteiro da Sprint 2](docs/Roteiro_Projeto_Sprint2_ICEIBank.md).
 Os exemplos Node.js foram adaptados para Python, conforme a seção 9.
 
 ## Preparação no Windows PowerShell
+
+Pré-requisitos: Git e Python 3.10 ou superior. O script de broker portátil é específico de Windows; Docker ou um broker configurado são alternativas. Os comandos abaixo partem da raiz do clone.
+
+```powershell
+git clone https://github.com/PHnsilva/ICEIBank.git
+cd ICEIBank
+```
 
 ```powershell
 python -m venv .venv
@@ -85,14 +92,14 @@ O JWT fica apenas em memória no navegador; erros da API aparecem na interface.
 As rotas bancárias exigem Bearer JWT. Login, frontend e `/config` são públicos;
 Swagger está em `/docs`. Dinheiro usa Decimal e strings com duas casas decimais.
 
-| Método e rota | Finalidade |
-| --- | --- |
-| `POST /auth/login` | Emitir JWT a partir de usuário/senha |
-| `POST /contas` | Criar conta (`id`, `nomeAluno`, `saldoInicial`) |
-| `GET /contas/{id}` | Consultar saldo |
-| `POST /contas/{id}/depositar` ou `/sacar` | Movimentar `valor` positivo |
-| `POST /transferencias` | Transferir (`idOrigem`, `idDestino`, `valor`) |
-| `GET /contas/{id}/historico?offset=0&limite=50` | Histórico por conta; limite 1–100 |
+| Método e rota                                   | Finalidade                                      |
+| ----------------------------------------------- | ----------------------------------------------- |
+| `POST /auth/login`                              | Emitir JWT a partir de usuário/senha            |
+| `POST /contas`                                  | Criar conta (`id`, `nomeAluno`, `saldoInicial`) |
+| `GET /contas/{id}`                              | Consultar saldo                                 |
+| `POST /contas/{id}/depositar` ou `/sacar`       | Movimentar `valor` positivo                     |
+| `POST /transferencias`                          | Transferir (`idOrigem`, `idDestino`, `valor`)   |
+| `GET /contas/{id}/historico?offset=0&limite=50` | Histórico por conta; limite 1–100               |
 
 **Local:** débito e crédito no mesmo processo; HTTP 200, `status=concluida` e
 saldos confirmados. Destino local inexistente retorna 404 e registra estorno.
@@ -153,6 +160,14 @@ Manager. A aplicação não apaga filas ou mensagens para contornar incompatibil
 
 ## Testes, resiliência e evidências reais
 
+Para os testes de unidade e HTTP com dublê de mensageria, na raiz:
+
+```powershell
+python -m pytest agencia/tests
+```
+
+Essa suíte não exige broker real e não comprova o fluxo distribuído. As evidências versionadas registram uma execução anterior; uma nova execução precisa confirmar o ambiente atual.
+
 Encerre as agências manuais antes dos testes: a suíte recusa portas ocupadas.
 Para o broker local, defina:
 
@@ -188,6 +203,19 @@ em `evidencias/sprint2/regressao/`; os PNGs da Sprint 1 são preservados.
 - [Evidências Sprint 2](evidencias/sprint2/README.md)
 - [Checklist histórico Sprint 1](CHECKLIST_SPRINT1.md)
 - [Evidências históricas Sprint 1](evidencias/sprint1/README.md)
+
+## Estrutura e contribuição
+
+- [agencia/app/](agencia/app/): configuração, autenticação, contas, transferências e mensageria.
+- [agencia/frontend/](agencia/frontend/): interface servida pelas agências.
+- [scripts/](scripts/): preparação, broker local e cenários de integração.
+- [tests/e2e/](tests/e2e/): regressão com agências e broker reais.
+
+Abra alterações em branch e pull request, descrevendo o contrato afetado, os testes executados e seus limites. Preserve a distinção entre publicação da transferência e crédito confirmado.
+
+## Licença
+
+[MIT](LICENSE), conforme o arquivo versionado.
 
 ## Uso de IA e referências
 
