@@ -29,8 +29,9 @@ def aguardar(condicao, timeout=20):
 
 
 class AmbienteSprint2:
-    def __init__(self, dados: Path):
+    def __init__(self, dados: Path, *, ativar_eleicao=False):
         self.dados = dados
+        self.ativar_eleicao = ativar_eleicao
         self.dados.mkdir(parents=True, exist_ok=True)
         url = os.environ.get("RABBITMQ_URL_TESTES", "")
         if not url:
@@ -85,7 +86,8 @@ class AmbienteSprint2:
         log = (self.dados / f"servidor-{agencia}.log").open("a", encoding="utf-8")
         self.logs.append(log)
         codigo = ("from pathlib import Path; import uvicorn; from agencia.app.main import criar_aplicacao; "
-                  f"uvicorn.run(criar_aplicacao({agencia}, Path({str(self.dados)!r})), host='127.0.0.1', port={4078+agencia}, access_log=False)")
+                  f"app = criar_aplicacao({agencia}, Path({str(self.dados)!r}), ativar_eleicao={self.ativar_eleicao!r}); "
+                  f"uvicorn.run(app, host='127.0.0.1', port={4078+agencia}, access_log=False)")
         self.processos[agencia] = subprocess.Popen([sys.executable, "-c", codigo], cwd=ROOT,
             env=self.env, stdout=log, stderr=log, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         with httpx.Client(timeout=1) as c:

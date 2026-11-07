@@ -6,7 +6,7 @@ from scripts.ambiente_sprint2 import AmbienteSprint2
 
 @pytest.fixture(scope="session")
 def agencias(tmp_path_factory):
-    with AmbienteSprint2(tmp_path_factory.mktemp("agencias-sprint2")) as ambiente:
+    with AmbienteSprint2(tmp_path_factory.mktemp("agencias"), ativar_eleicao=True) as ambiente:
         yield {"segredo_teste": ambiente.env["JWT_SECRET"], "dados": ambiente.dados, "ambiente": ambiente}
 
 

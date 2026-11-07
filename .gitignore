@@ -6,6 +6,8 @@ __pycache__/
 .coverage
 htmlcov/
 agencia/data/*.jsonl
+agencia/data/eleicao-agencia-*.json
+agencia/data/eleicao-agencia-*.tmp
 .env
 .local/
 erl_crash.dump
