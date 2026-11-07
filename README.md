@@ -6,9 +6,11 @@ remoto REST por Publish/Subscribe com RabbitMQ. JWT, frontend, particionamento e
 histórico por conta continuam funcionando. Contas e saldos continuam em memória.
 
 O [PR #1](https://github.com/PHnsilva/ICEIBank/pull/1) da Sprint 1 foi integrado à
-`main`; suas evidências permanecem em `evidencias/sprint1/`. A evolução está na
-branch `sprint2/desenvolvimento`, sem merge automático. O vídeo da entrega
-anterior era uma pendência fora do escopo; não se afirma sua entrega externa.
+`main`. A Sprint 2 também foi integrada à `main` pelo
+[PR #2](https://github.com/PHnsilva/ICEIBank/pull/2). Os registros de cada
+entrega estão em [`evidencias/sprint1/`](evidencias/sprint1/) e
+[`evidencias/sprint2/`](evidencias/sprint2/). O checklist da Sprint 1 registra
+que o vídeo de apresentação ficou fora do escopo daquela entrega.
 
 Referência: [roteiro da Sprint 2](docs/Roteiro_Projeto_Sprint2_ICEIBank.md).
 Os exemplos Node.js foram adaptados para Python, conforme a seção 9.
@@ -152,6 +154,14 @@ use um vhost novo para esta sprint ou migre filas vazias conscientemente no
 Manager. A aplicação não apaga filas ou mensagens para contornar incompatibilidade.
 
 ## Testes, resiliência e evidências reais
+
+Para rodar os testes do backend com mensageria simulada, execute na raiz:
+
+```powershell
+python -m pytest agencia/tests -q
+```
+
+A suíte de integração abaixo usa três processos de agência e um broker real.
 
 Encerre as agências manuais antes dos testes: a suíte recusa portas ocupadas.
 Para o broker local, defina:
