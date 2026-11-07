@@ -1,7 +1,8 @@
 """Ponto de composição da aplicação FastAPI."""
 
+import asyncio
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
-from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import Depends, FastAPI, Request
@@ -14,12 +15,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import URLS_AGENCIAS, PORTAS_AGENCIAS, validar_agencia_id
 from .auth import ConfiguracaoAuth, router as auth_router, usuario_autenticado
 from .controllers.contas_controller import router as contas_router
+from .controllers.eleicao_controller import router as eleicao_router
 from .controllers.transferencias_controller import router as transferencias_router
 from .estado_agencia import EstadoAgencia
 from .services.registro_eventos import RegistroEventos
 from .services.relogio_vetorial import RelogioVetorial
 from .services.mensageria import MensageriaRabbitMQ
 from .services.creditos import processar_credito
+from .services.eleicao import Eleicao
 
 
 def _mensagem_validacao(tipo: str) -> str:
@@ -43,6 +46,8 @@ def criar_aplicacao(
     agencia_id: int,
     diretorio_dados: Path | None = None,
     mensageria=None,
+    *,
+    ativar_eleicao: bool = False,
 ) -> FastAPI:
     """Cria uma aplicação isolada para a agência informada."""
     agencia_id = validar_agencia_id(agencia_id)
@@ -52,14 +57,21 @@ def criar_aplicacao(
     async def lifespan(app):
         try:
             await broker.iniciar(agencia_id, lambda corpo: processar_credito(app.state.estado_agencia, corpo))
-            yield
+            tarefa = asyncio.create_task(app.state.eleicao.executar()) if ativar_eleicao else None
+            try:
+                yield
+            finally:
+                if tarefa is not None:
+                    tarefa.cancel()
+                    with suppress(asyncio.CancelledError):
+                        await tarefa
         finally:
             await broker.fechar()
 
     app = FastAPI(
         title=f"ICEIBank — Agência {agencia_id}",
-        version="0.2.0",
-        description="Sistema bancário distribuído acadêmico — Sprint 2.",
+        version="0.3.0",
+        description="Sistema bancário distribuído acadêmico — Sprint 3.",
         lifespan=lifespan,
     )
     app.state.auth = ConfiguracaoAuth.do_ambiente()
@@ -74,6 +86,10 @@ def criar_aplicacao(
         relogio=RelogioVetorial(agencia_id),
         registro=RegistroEventos(agencia_id, diretorio_dados),
     )
+    if ativar_eleicao:
+        caminho = app.state.estado_agencia.registro.caminho.with_name(f"eleicao-agencia-{agencia_id}.json")
+        app.state.eleicao = Eleicao(agencia_id, caminho, app.state.auth)
+        app.include_router(eleicao_router)
 
     @app.exception_handler(RequestValidationError)
     async def tratar_erro_validacao(

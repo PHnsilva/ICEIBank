@@ -28,7 +28,7 @@ def main() -> None:
     load_dotenv(Path(__file__).resolve().parents[1] / ".env")
     try:
         agencia_id = obter_agencia_id()
-        app = criar_aplicacao(agencia_id)
+        app = criar_aplicacao(agencia_id, ativar_eleicao=True)
     except ValueError as erro:
         raise SystemExit(f"Erro de configuração: {erro}") from None
 
