@@ -6,10 +6,19 @@ import 'package:http/http.dart' as http;
 typedef Json = Map<String, dynamic>;
 
 class ApiException implements Exception {
-  const ApiException(this.message, {this.status});
+  const ApiException(
+    this.message, {
+    this.status,
+    this.dados,
+    this.semConexao = false,
+  });
 
   final String message;
   final int? status;
+  final Json? dados;
+  final bool semConexao;
+
+  bool get indisponivel => semConexao || (status ?? 0) >= 500;
 }
 
 class IceiBankApi {
@@ -54,7 +63,10 @@ class IceiBankApi {
       final aviso = corpo != null && !publico
           ? ' Confira o saldo e o histórico antes de repetir a operação.'
           : '';
-      throw ApiException('Agência $agencia sem resposta.$aviso');
+      throw ApiException(
+        'Agência $agencia sem resposta.$aviso',
+        semConexao: true,
+      );
     }
     if (resposta.statusCode == 401 && !publico) sair();
     final Object? dados;
@@ -71,6 +83,7 @@ class IceiBankApi {
       throw ApiException(
         detail is String ? detail : 'Erro HTTP ${resposta.statusCode}.',
         status: resposta.statusCode,
+        dados: dados is Json ? dados : null,
       );
     }
     if (dados is! Json) throw const ApiException('Resposta inesperada.');
@@ -103,13 +116,16 @@ class IceiBankApi {
   Future<List<Json?>> statusCluster() => Future.wait(
     agencias.map((id) async {
       try {
-        final dados = await _enviar(id, '/cluster/status', publico: true);
-        return dados['agenciaId'] == id ? dados : null;
+        final dados = await _enviar(id, '/bully/lider', publico: true);
+        return dados['idAgencia'] == id ? dados : null;
       } on ApiException {
         return null;
       }
     }),
   );
+
+  Future<Json> sincronizar(int id, Json pedido) =>
+      _enviar(id % 3, '/contas/$id/sincronizar', corpo: pedido);
 
   Future<Json> saldo(int id) => _enviar(id % 3, '/contas/$id');
 
