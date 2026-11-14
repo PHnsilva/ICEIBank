@@ -292,13 +292,12 @@ class _PainelBancarioState extends State<PainelBancario>
         final dados = await api.criar(id, nome.text.trim(), quantia);
         return 'Conta $id criada · Saldo R\$ ${dados['saldo']}';
       case Operacao.depositar || Operacao.sacar:
-        final item = await local.registrar(
+        final concluida = await local.registrar(
           id,
           operacao == Operacao.depositar ? 'DEPOSITO' : 'SAQUE',
           quantia,
         );
-        if (item == null) return 'Operação concluída.';
-        return item.falha == null ? 'Operação registrada no dispositivo.' : '';
+        return concluida ? 'Operação concluída.' : '';
       case Operacao.transferir:
         final dados = await api.transferir(id, lerConta(destino), quantia);
         if (local.banco.ler(id).pendentes.isEmpty) {

@@ -159,7 +159,7 @@ class Sincronizacao {
     }
   }
 
-  Future<Pendencia?> registrar(int id, String tipo, String valor) async {
+  Future<bool> registrar(int id, String tipo, String valor) async {
     if (centavos(valor) <= BigInt.zero || valor.split('.').first.length > 14) {
       throw const ApiException(
         'Informe um valor positivo de até 14 dígitos inteiros.',
@@ -187,11 +187,7 @@ class Sincronizacao {
       ContaLocal(local.confirmada, [...local.operacoes, novo]),
     );
     if (conectado) await sincronizarConta(id);
-    return banco
-        .ler(id)
-        .operacoes
-        .where((item) => item.id == novo.id)
-        .firstOrNull;
+    return !banco.ler(id).operacoes.any((item) => item.id == novo.id);
   }
 
   Future<void> sincronizarConta(int id) async {
