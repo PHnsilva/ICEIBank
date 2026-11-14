@@ -1,6 +1,8 @@
 """Eleição Bully e verificação periódica da líder conhecida."""
 import asyncio
 import logging
+import math
+import os
 
 import httpx
 
@@ -16,6 +18,16 @@ TIMEOUT_HTTP = 1.0
 logger = logging.getLogger("uvicorn.error")
 
 
+def _segundos_configurados(nome: str, padrao: float) -> float:
+    try:
+        segundos = float(os.environ.get(nome, padrao))
+    except ValueError:
+        segundos = 0
+    if not math.isfinite(segundos) or segundos <= 0:
+        raise ValueError(f"{nome} deve ser um número positivo de segundos.")
+    return segundos
+
+
 class Eleicao:
     def __init__(self, estado: EstadoAgencia, auth: ConfiguracaoAuth):
         self.estado = estado
@@ -25,6 +37,8 @@ class Eleicao:
         self.maiores = tuple(par for par in self.pares if par > self.agencia_id)
         self.lider: int | None = None
         self.solicitada = asyncio.Event()
+        self.intervalo = _segundos_configurados("BULLY_HEARTBEAT_SEGUNDOS", INTERVALO_HEARTBEAT)
+        self.timeout = _segundos_configurados("BULLY_TIMEOUT_SEGUNDOS", TIMEOUT_HTTP)
 
     def status(self):
         return {"idAgencia": self.agencia_id, "liderAtual": self.lider}
@@ -111,10 +125,12 @@ class Eleicao:
 
     async def executar(self):
         self.solicitada.set()
-        async with httpx.AsyncClient(timeout=TIMEOUT_HTTP, trust_env=False) as cliente:
+        logger.info("Bully agência %s | heartbeat=%gs | timeout=%gs",
+                    self.agencia_id, self.intervalo, self.timeout)
+        async with httpx.AsyncClient(timeout=self.timeout, trust_env=False) as cliente:
             while True:
                 try:
-                    await asyncio.wait_for(self.solicitada.wait(), timeout=INTERVALO_HEARTBEAT)
+                    await asyncio.wait_for(self.solicitada.wait(), timeout=self.intervalo)
                 except TimeoutError:
                     await self._verificar(cliente)
                 else:
