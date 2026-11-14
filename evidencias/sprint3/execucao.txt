@@ -1,0 +1,132 @@
+Eleição inicial das três agências
+PS> Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz'
+2026-11-14 19:20:56 -03:00
+Processos iniciados em paralelo: [21420, 14588, 19828]
+GET :4078/bully/lider -> {"idAgencia": 0, "liderAtual": 2}
+GET :4079/bully/lider -> {"idAgencia": 1, "liderAtual": 2}
+GET :4080/bully/lider -> {"idAgencia": 2, "liderAtual": 2}
+
+Liderança no app Flutter
+PS> Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz'
+2026-11-14 19:21:05 -03:00
+Três agências em execução.
+Sessão JWT iniciada na interface.
+Conta fictícia 30 consultada na Agência 0.
+
+Failover automático
+PS> Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz'
+2026-11-14 19:21:07 -03:00
+Agência 2 encerrada (PID 19828).
+GET :4078/bully/lider -> {"idAgencia": 0, "liderAtual": 1}
+GET :4079/bully/lider -> {"idAgencia": 1, "liderAtual": 1}
+
+Nova líder exibida automaticamente
+PS> Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz'
+2026-11-14 19:21:13 -03:00
+Agência 2 foi encerrada.
+A página permaneceu aberta.
+O painel detectou a Agência 1 pelo polling.
+
+Depósito registrado offline
+PS> Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz'
+2026-11-14 19:21:23 -03:00
+Rede desativada no contexto do navegador.
+A API manteve o saldo real de R$ 100,00.
+O valor de R$ 120,00 é provisório.
+
+Sincronização após reconectar
+PS> Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz'
+2026-11-14 19:21:25 -03:00
+A única ação foi restaurar a rede.
+A fila esvaziou sem interação com o app.
+GET /contas/30 confirma R$ 120,00.
+
+Conflito no backend
+PS> Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz'
+2026-11-14 19:21:29 -03:00
+POST /contas/30/sincronizar -> HTTP 409
+{
+  "detail": "O estado conhecido mudou. Revise a operação antes de enviá-la novamente.",
+  "relacao": "ANTES",
+  "vetorConhecido": [
+    16,
+    19,
+    13
+  ],
+  "vetorAtual": [
+    17,
+    19,
+    13
+  ],
+  "contaAtual": {
+    "id": 30,
+    "nomeAluno": "Aluno 30",
+    "saldo": "125.00",
+    "vetorAtual": [
+      17,
+      19,
+      13
+    ],
+    "versaoAgencia": "a709a2b0-4e4d-4ec0-ac1e-cce16f9cb498"
+  }
+}
+
+Saque offline rejeitado
+PS> Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz'
+2026-11-14 19:21:29 -03:00
+Outro cliente depositou R$ 5,00 enquanto o app estava offline.
+O app recebeu HTTP 409 e passou a mostrar o saldo real de R$ 125,00.
+
+Fluxo bancário confirmado na interface
+PS> Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz'
+2026-11-14 19:21:35 -03:00
+Login JWT · saldo · depósito · saque · transferência local e remota.
+
+Histórico reconstruído dos três logs
+PS> Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz'
+2026-11-14 19:21:35 -03:00
+PS> node agencia/historico-lideranca.js --dados <pasta-da-execucao>
+=== Histórico de eventos de eleição ===
+(2026-11-14T22:20:55.847140Z) [agencia-1] ELEICAO_INICIADA {"idAgencia":1}
+(2026-11-14T22:20:55.852152Z) [agencia-0] ELEICAO_INICIADA {"idAgencia":0}
+(2026-11-14T22:20:55.920625Z) [agencia-1] ELEICAO_RECEBIDA {"de":0,"minhaId":1}
+(2026-11-14T22:20:55.930945Z) [agencia-2] ELEICAO_INICIADA {"idAgencia":2}
+(2026-11-14T22:20:55.932960Z) [agencia-2] TORNOU_LIDER {"idAgencia":2}
+(2026-11-14T22:20:55.981539Z) [agencia-1] LIDER_ANUNCIADO {"liderId":2,"aceito":true}
+(2026-11-14T22:20:55.985075Z) [agencia-0] LIDER_ANUNCIADO {"liderId":2,"aceito":true}
+(2026-11-14T22:20:56.414835Z) [agencia-2] ELEICAO_RECEBIDA {"de":1,"minhaId":2}
+(2026-11-14T22:20:56.415993Z) [agencia-2] ELEICAO_INICIADA {"idAgencia":2}
+(2026-11-14T22:20:56.420520Z) [agencia-1] ELEICAO_INICIADA {"idAgencia":1}
+(2026-11-14T22:20:56.425146Z) [agencia-2] ELEICAO_RECEBIDA {"de":0,"minhaId":2}
+(2026-11-14T22:20:56.427414Z) [agencia-0] LIDER_ANUNCIADO {"liderId":2,"aceito":true}
+(2026-11-14T22:20:56.428434Z) [agencia-1] LIDER_ANUNCIADO {"liderId":2,"aceito":true}
+(2026-11-14T22:20:56.428434Z) [agencia-2] ELEICAO_RECEBIDA {"de":1,"minhaId":2}
+(2026-11-14T22:20:56.438481Z) [agencia-2] ELEICAO_INICIADA {"idAgencia":2}
+(2026-11-14T22:20:56.444948Z) [agencia-0] LIDER_ANUNCIADO {"liderId":2,"aceito":true}
+(2026-11-14T22:20:56.444948Z) [agencia-1] LIDER_ANUNCIADO {"liderId":2,"aceito":true}
+(2026-11-14T22:21:06.459936Z) [agencia-0] LIDER_NAO_RESPONDEU {"liderAtual":2,"agencia":0}
+(2026-11-14T22:21:06.460933Z) [agencia-0] ELEICAO_INICIADA {"idAgencia":0}
+(2026-11-14T22:21:06.467288Z) [agencia-1] ELEICAO_RECEBIDA {"de":0,"minhaId":1}
+(2026-11-14T22:21:06.490063Z) [agencia-1] LIDER_NAO_RESPONDEU {"liderAtual":2,"agencia":1}
+(2026-11-14T22:21:06.491472Z) [agencia-1] ELEICAO_INICIADA {"idAgencia":1}
+(2026-11-14T22:21:07.505885Z) [agencia-1] TORNOU_LIDER {"idAgencia":1}
+(2026-11-14T22:21:07.514980Z) [agencia-0] LIDER_ANUNCIADO {"liderId":1,"aceito":true}
+(2026-11-14T22:21:08.522211Z) [agencia-1] ELEICAO_INICIADA {"idAgencia":1}
+(2026-11-14T22:21:09.541404Z) [agencia-0] LIDER_ANUNCIADO {"liderId":1,"aceito":true}
+(2026-11-14T22:21:16.282968Z) [agencia-2] ELEICAO_INICIADA {"idAgencia":2}
+(2026-11-14T22:21:16.283967Z) [agencia-2] TORNOU_LIDER {"idAgencia":2}
+(2026-11-14T22:21:16.325976Z) [agencia-0] LIDER_ANUNCIADO {"liderId":2,"aceito":true}
+(2026-11-14T22:21:16.325976Z) [agencia-1] LIDER_ANUNCIADO {"liderId":2,"aceito":true}
+
+=== Linha do tempo de líderes declaradas ===
+2026-11-14T22:20:55.932960Z · Agência 2 declarou liderança
+2026-11-14T22:21:07.505885Z · Agência 1 declarou liderança
+2026-11-14T22:21:16.283967Z · Agência 2 declarou liderança
+
+Tempos do Bully configuráveis
+PS> Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz'
+2026-11-14 19:21:45 -03:00
+BULLY_HEARTBEAT_SEGUNDOS=1.5
+BULLY_TIMEOUT_SEGUNDOS=0.5
+
+INFO:     Bully agência 0 | heartbeat=1.5s | timeout=0.5s

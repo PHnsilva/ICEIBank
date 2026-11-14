@@ -312,3 +312,114 @@ apresentação e entrega; esta declaração não afirma que essa revisão humana
 Referências consultadas: [aio-pika — integração assíncrona](https://docs.aio-pika.com/quick-start.html),
 [RabbitMQ — confirmações](https://www.rabbitmq.com/docs/confirms) e
 [RabbitMQ — dead-letter exchanges](https://www.rabbitmq.com/docs/dlx).
+
+## Sprint 3
+
+### 5.5 · Eleição por Bully
+
+1. Cada agência candidata consulta apenas as de ID maior. A maior entre as que
+   respondem consegue prosseguir sem receber um OK de uma agência acima dela.
+   A menor ID também poderia ser a prioridade, desde que todos invertessem a
+   regra de consulta e de aceitação dos anúncios. A implementação segue a ordem
+   do Bully apresentada no roteiro.
+2. Declarações transitórias são esperadas se uma agência começar antes das
+   superiores ou se os pedidos vencerem o timeout. Um `TORNOU_LIDER` registra
+   uma decisão local. A convergência é observada quando as agências acessíveis
+   passam a informar a mesma líder em `/bully/lider`.
+3. Sem autenticação, uma chamada externa poderia provocar novas eleições e
+   tráfego, ou interferir na liderança informada. O código reaproveita o JWT
+   interno e o vincula à agência de origem, ao destinatário, à rota e ao corpo.
+   A consulta pública informa somente o ID local e o da líder conhecida.
+
+### 6.4 · Heartbeat e failover
+
+1. Com 100 ms, uma seguidora faz cerca de dez consultas por segundo quando as
+   respostas são rápidas. Isso detecta uma queda cedo, mas aumenta o tráfego
+   e o trabalho da líder. Com 60 s, uma queda logo após um batimento pode
+   ficar invisível por quase um minuto, além dos prazos de rede e eleição.
+2. A Agência 2 pode reassumir ao voltar, pois a prioridade é fixa. Isso é
+   coerente com a regra do roteiro. Em um sistema no qual a líder coordenasse
+   transações, uma troca espontânea no meio de uma operação poderia deixar
+   trabalho em andamento sem o coordenador original. A recuperação teria de
+   distinguir ações da líder antiga e decidir se retoma ou desfaz a operação.
+3. Uma resposta que leve mais de 1 s é tratada como indisponibilidade na
+   configuração padrão. Isso pode iniciar uma eleição desnecessária ou fazer
+   uma agência menor se declarar líder temporariamente. O maior ID acessível
+   volta a prevalecer tão logo as respostas cheguem dentro dos prazos.
+
+### 7.3 · Histórico de liderança
+
+1. No ensaio com três processos iniciados em paralelo, houve **zero trocas**
+   até a estabilização. Somente a Agência 2 registrou `TORNOU_LIDER` na
+   partida, embora as três tenham iniciado candidaturas. Depois da queda e
+   do retorno, o histórico registrou **2 → 1 → 2**. As candidaturas adicionais
+   enviam pedidos a IDs superiores. Anúncios, registros e espera de timeout
+   consomem rede, processamento e tempo mesmo quando a decisão final coincide.
+   Veja `evidencias/sprint3/historico-lideranca.png`.
+
+### 8.3 · App Flutter
+
+1. O painel consulta as três agências a cada dois segundos, em paralelo, em
+   primeiro plano. O intervalo mantém a troca visível em poucos segundos e
+   limita as chamadas no celular. O app pausa as consultas em segundo plano
+   e volta a consultar quando retoma a tela.
+2. Se as agências que respondem indicarem líderes diferentes, o painel mostra
+   a liderança como indisponível durante a transição. A líder também precisa
+   estar entre as agências que responderam. A próxima consulta exibe a líder
+   assim que as respostas concordarem.
+3. O app reutiliza as rotas, o login JWT, o roteamento da conta pelo módulo
+   três e o significado de uma transferência publicada no RabbitMQ. Em Flutter,
+   o formulário acompanha o ciclo de vida da tela. As falhas de rede podem
+   ocorrer durante uma ação, então a interface mantém uma cópia do saldo e
+   uma fila com indicação visual das operações ainda pendentes.
+
+### 9.6 · Sincronização
+
+1. O mesmo saldo pode reaparecer depois de um depósito seguido de um saque.
+   O vetor avança mesmo quando o saldo líquido coincide e permite distinguir
+   estados iguais, anteriores, posteriores ou concorrentes em relação ao
+   estado conhecido pelo app. A versão da instância também distingue vetores
+   repetidos se o processo for reiniciado.
+2. O relógio é da agência. Uma ação de outra conta, um crédito via RabbitMQ
+   ou uma mensagem de eleição pode avançar o mesmo relógio sem mudar o saldo
+   consultado. A regra é conservadora e reutiliza o relógio do Sprint 2.
+   Uma versão por conta exigiria atualizá-la em todos os caminhos de escrita,
+   incluindo transferências locais e créditos remotos, e comparar saldo e
+   versão juntos durante a sincronização.
+3. No 409, o app salva o saldo da resposta, retira a projeção otimista e
+   mantém um aviso para cada operação afetada da conta. A pessoa pode dispensar
+   o aviso e enviar um novo pedido depois de revisar o estado real. Repetir
+   automaticamente sobre o novo saldo poderia executar uma decisão que já
+   deixou de fazer sentido.
+
+### 10.3 · Offline-first
+
+1. Foi escolhido o [Hive CE](https://pub.dev/packages/hive_ce) para armazenar por
+   conta e por sessão lógica do operador um conjunto pequeno de dados em
+   chave-valor. Saldo, vetor e fila são gravados juntos em uma entrada. A
+   alternativa SQLite via sqflite ofereceria consultas e transações entre
+   registros. Drift acrescentaria uma camada de consultas tipadas, útil para
+   um armazenamento mais relacional.
+2. O app exibiu a operação recusada com a mensagem **Conflito de sincronização.
+   Revise a operação.**, substituiu o saldo anterior pelo valor enviado em
+   `contaAtual` e removeu o saldo provisório de **R$ 110,00**. O depósito feito
+   em outro cliente elevou o saldo real a **R$ 125,00**. O saque rejeitado ficou
+   à vista como registro da tentativa, fora da fila de sincronização.
+3. Mostrar um saque ou depósito provisório como definitivo faria a pessoa
+   tomar decisões com base em um valor ainda sujeito a rejeição. O app exibe
+   **Saldo confirmado** e **Saldo provisório** separadamente e identifica cada
+   pendência. O servidor decide pela aplicação após comparar o vetor e validar
+   o valor e o saldo. O mesmo identificador permite repetir uma sincronização
+   cuja resposta se perdeu sem reaplicar a movimentação.
+
+### Funcionalidade adicional e uso de IA
+
+O intervalo do heartbeat e o timeout HTTP podem ser configurados por instância
+com `BULLY_HEARTBEAT_SEGUNDOS` e `BULLY_TIMEOUT_SEGUNDOS`. Os padrões são 3 s
+e 1 s, e os valores efetivos são registrados na inicialização. A demonstração
+usa 1,5 s e 0,5 s, com captura em
+`evidencias/sprint3/funcionalidade-adicional.png` e commit próprio.
+
+Foi utilizado **Codex (OpenAI)** na implementação, nos testes, na documentação
+e na preparação das capturas. Antes da entrega, o autor deve revisar as
+decisões e estar preparado para explicar a eleição e a fila offline.

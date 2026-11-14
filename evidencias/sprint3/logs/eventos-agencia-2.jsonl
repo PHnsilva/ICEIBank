@@ -1,0 +1,9 @@
+{"agencia":"agencia-2","tipo":"ELEICAO_INICIADA","timestampVetorial":[0,0,1],"horaParede":"2026-11-14T22:20:55.930945Z","detalhes":{"idAgencia":2}}
+{"agencia":"agencia-2","tipo":"TORNOU_LIDER","timestampVetorial":[0,0,2],"horaParede":"2026-11-14T22:20:55.932960Z","detalhes":{"idAgencia":2}}
+{"agencia":"agencia-2","tipo":"ELEICAO_RECEBIDA","timestampVetorial":[0,2,5],"horaParede":"2026-11-14T22:20:56.414835Z","detalhes":{"de":1,"minhaId":2}}
+{"agencia":"agencia-2","tipo":"ELEICAO_INICIADA","timestampVetorial":[0,2,6],"horaParede":"2026-11-14T22:20:56.415993Z","detalhes":{"idAgencia":2}}
+{"agencia":"agencia-2","tipo":"ELEICAO_RECEBIDA","timestampVetorial":[3,2,9],"horaParede":"2026-11-14T22:20:56.425146Z","detalhes":{"de":0,"minhaId":2}}
+{"agencia":"agencia-2","tipo":"ELEICAO_RECEBIDA","timestampVetorial":[3,6,10],"horaParede":"2026-11-14T22:20:56.428434Z","detalhes":{"de":1,"minhaId":2}}
+{"agencia":"agencia-2","tipo":"ELEICAO_INICIADA","timestampVetorial":[3,6,11],"horaParede":"2026-11-14T22:20:56.438481Z","detalhes":{"idAgencia":2}}
+{"agencia":"agencia-2","tipo":"ELEICAO_INICIADA","timestampVetorial":[0,0,1],"horaParede":"2026-11-14T22:21:16.282968Z","detalhes":{"idAgencia":2}}
+{"agencia":"agencia-2","tipo":"TORNOU_LIDER","timestampVetorial":[0,0,2],"horaParede":"2026-11-14T22:21:16.283967Z","detalhes":{"idAgencia":2}}

@@ -1,0 +1,14 @@
+{"agencia":"agencia-1","tipo":"ELEICAO_INICIADA","timestampVetorial":[0,1,0],"horaParede":"2026-11-14T22:20:55.847140Z","detalhes":{"idAgencia":1}}
+{"agencia":"agencia-1","tipo":"ELEICAO_RECEBIDA","timestampVetorial":[2,3,0],"horaParede":"2026-11-14T22:20:55.920625Z","detalhes":{"de":0,"minhaId":1}}
+{"agencia":"agencia-1","tipo":"LIDER_ANUNCIADO","timestampVetorial":[2,4,4],"horaParede":"2026-11-14T22:20:55.981539Z","detalhes":{"liderId":2,"aceito":true}}
+{"agencia":"agencia-1","tipo":"ELEICAO_INICIADA","timestampVetorial":[2,5,4],"horaParede":"2026-11-14T22:20:56.420520Z","detalhes":{"idAgencia":1}}
+{"agencia":"agencia-1","tipo":"LIDER_ANUNCIADO","timestampVetorial":[2,7,8],"horaParede":"2026-11-14T22:20:56.428434Z","detalhes":{"liderId":2,"aceito":true}}
+{"agencia":"agencia-1","tipo":"LIDER_ANUNCIADO","timestampVetorial":[3,8,13],"horaParede":"2026-11-14T22:20:56.444948Z","detalhes":{"liderId":2,"aceito":true}}
+{"agencia":"agencia-1","tipo":"CRIAR_CONTA","timestampVetorial":[3,9,13],"horaParede":"2026-11-14T22:21:01.290329Z","detalhes":{"idConta":31,"nomeAluno":"Aluno 31","saldo":"100.00"}}
+{"agencia":"agencia-1","tipo":"ELEICAO_RECEBIDA","timestampVetorial":[11,10,13],"horaParede":"2026-11-14T22:21:06.467288Z","detalhes":{"de":0,"minhaId":1}}
+{"agencia":"agencia-1","tipo":"LIDER_NAO_RESPONDEU","timestampVetorial":[11,11,13],"horaParede":"2026-11-14T22:21:06.490063Z","detalhes":{"liderAtual":2,"agencia":1}}
+{"agencia":"agencia-1","tipo":"ELEICAO_INICIADA","timestampVetorial":[11,12,13],"horaParede":"2026-11-14T22:21:06.491472Z","detalhes":{"idAgencia":1}}
+{"agencia":"agencia-1","tipo":"TORNOU_LIDER","timestampVetorial":[11,14,13],"horaParede":"2026-11-14T22:21:07.505885Z","detalhes":{"idAgencia":1}}
+{"agencia":"agencia-1","tipo":"ELEICAO_INICIADA","timestampVetorial":[11,17,13],"horaParede":"2026-11-14T22:21:08.522211Z","detalhes":{"idAgencia":1}}
+{"agencia":"agencia-1","tipo":"LIDER_ANUNCIADO","timestampVetorial":[11,21,13],"horaParede":"2026-11-14T22:21:16.325976Z","detalhes":{"liderId":2,"aceito":true}}
+{"agencia":"agencia-1","tipo":"TRANSFERENCIA_CREDITO_REMOTO","timestampVetorial":[22,22,13],"horaParede":"2026-11-14T22:21:32.521951Z","detalhes":{"idDestino":31,"idConta":31,"idOrigem":30,"valor":"5.00","origemAgencia":0,"idTransferencia":"65dbd6c8-4502-45c7-94ee-0d89b42d13e6","saldo":"105.00"}}

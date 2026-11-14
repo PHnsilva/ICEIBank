@@ -15,9 +15,10 @@ que o vídeo de apresentação ficou fora do escopo daquela entrega.
 Referência: [roteiro da Sprint 2](docs/Roteiro_Projeto_Sprint2_ICEIBank.md).
 Os exemplos Node.js foram adaptados para Python, conforme a seção 9.
 
-A implementação inicial da Sprint 3 adiciona eleição por maioria e um app
-Flutter para Android. Veja o [guia da Sprint 3](docs/Sprint3.md) para executar
-as agências, observar a reeleição e testar o aplicativo.
+A Sprint 3 adiciona eleição pelo algoritmo de Bully, failover automático e um
+app Flutter com saldo em cache, fila offline e detecção de conflito pelo relógio
+vetorial. O [guia da Sprint 3](docs/Sprint3.md) reúne os passos de execução e
+demonstração. As capturas estão em [evidencias/sprint3](evidencias/sprint3/).
 
 ## Preparação no Windows PowerShell
 

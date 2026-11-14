@@ -1,65 +1,93 @@
-# Sprint 3 · Eleição de líder e aplicativo Flutter
+# Sprint 3 · Bully e app Flutter offline-first
 
-Implementação inicial baseada na visão geral do roteiro. O algoritmo, o fluxo
-móvel, a demonstração e os entregáveis serão confrontados com o roteiro completo.
+## Agências e eleição
 
-## Eleição entre as três agências
+As três agências Python continuam usando as portas 4078, 4079 e 4080. Cada
+agência inicia uma eleição ao subir e consulta os IDs superiores por
+`POST /bully/eleicao`. Se ninguém acima responder, ela anuncia sua liderança
+por `POST /bully/coordenador`. As duas mensagens usam o JWT interno existente
+e transportam o relógio vetorial no campo `vetorEnvio`.
 
-As agências continuam nas portas 4078, 4079 e 4080 do mesmo computador. Cada
-processo começa como seguidor e espera um batimento. Quando o prazo aleatório
-expira, o processo inicia uma candidatura em um novo mandato e solicita votos
-às outras agências. Dois votos formam uma maioria. Cada processo registra seu
-mandato e voto em arquivo, inclusive para recuperar o estado após um reinício.
+As seguidoras consultam `GET /bully/lider` da líder atual. Se a líder não
+responder ou não confirmar a liderança, iniciam uma eleição. As agências
+convergem para o maior ID acessível quando a rede se estabiliza. Se a antiga
+líder voltar com o maior ID, ela reassume. O Bully usa timeouts para suspeitar
+de falhas, portanto pode haver declarações simultâneas durante uma partição
+ou na subida. A liderança é informativa neste sprint. As contas continuam
+particionadas por `id % 3`, ficam em memória e os créditos remotos continuam
+via RabbitMQ.
 
-A líder envia batimentos HTTP e deixa de se anunciar como líder quando perde
-a confirmação de maioria. As mensagens entre agências usam o JWT de serviço,
-assinado para o destino, o caminho e o corpo. As três instâncias precisam usar
-a mesma configuração de autenticação.
+Os padrões são 3 segundos entre batimentos e 1 segundo de timeout HTTP. A
+funcionalidade adicional permite ajustar os dois valores por instância. Use
+valores positivos em segundos e ponto como separador decimal. Exemplo para
+configurar antes de iniciar as três agências:
 
-O protocolo usa apenas a parte de eleição inspirada em Raft. O líder coordena
-o grupo, enquanto cada conta continua na partição calculada por `id % 3`.
-Contas e saldos ficam em memória. Ao encerrar uma agência, sua partição fica
-indisponível e volta vazia após o reinício. O RabbitMQ continua transportando
-os créditos remotos. A seção 5.2 do [artigo de Raft](https://raft.github.io/raft.pdf)
-descreve a eleição que serviu de referência.
+```powershell
+$env:BULLY_HEARTBEAT_SEGUNDOS = "1.5"
+$env:BULLY_TIMEOUT_SEGUNDOS = "0.5"
+```
 
 ## Demonstração local
 
-1. Prepare o Python e o RabbitMQ conforme o [README](../README.md) e inicie as
-   três agências com `python agencia/executar.py` e os respectivos `AGENCIA_ID`.
-2. Consulte o estado de cada processo no PowerShell.
+1. Inicie o RabbitMQ e as três agências conforme o [README](../README.md).
+2. Confirme que as três instâncias retornam `liderAtual = 2`.
 
    ```powershell
-   4078..4080 | ForEach-Object {
-       Invoke-RestMethod "http://127.0.0.1:$_/cluster/status"
-   }
+   Get-Date
+   4078..4080 | ForEach-Object { Invoke-RestMethod "http://127.0.0.1:$_/bully/lider" }
    ```
 
-3. Encerre a agência cujo `papel` é `lider`. Depois de alguns segundos,
-   consulte as outras duas portas. As duas devem informar o mesmo `liderId`
-   e um mandato superior ao anterior. Reinicie a agência encerrada para
-   observar a volta como seguidora.
-4. Abra o [app Android](../mobile/README.md) para acompanhar o estado do grupo
-   e realizar operações nas agências disponíveis. A confirmação de publicação
-   de uma transferência remota antecede a confirmação do crédito.
+3. Abra o [app Flutter](../app_mobile/README.md) e observe a Agência 2 no
+   painel. Encerre o processo da Agência 2, aguarde a troca e consulte as
+   portas 4078 e 4079. O app deve mostrar a Agência 1 automaticamente.
+   Ao reiniciar a Agência 2, ela retorna à liderança.
+4. Na raiz do repositório, rode `node agencia/historico-lideranca.js`. O
+   script lê os JSONL de `agencia/data/`. Use `--dados <pasta>` para limitar
+   a leitura à pasta de uma execução. A linha do tempo mostra as declarações
+   registradas por hora de parede, inclusive as transitórias.
 
-## Testes
+## Sincronização
 
-Com o RabbitMQ local iniciado e as portas das agências livres:
+Consulte `GET /contas/{id}` com o JWT de operador para receber o saldo,
+`vetorAtual` e `versaoAgencia`. Envie o depósito ou saque pendente à agência
+responsável em `POST /contas/{id}/sincronizar`. Exemplo de corpo:
+
+```json
+{
+  "tipo": "DEPOSITO",
+  "valor": "20.00",
+  "vetorConhecido": [4, 0, 0]
+}
+```
+
+O cliente Flutter também envia `versaoAgencia` e `operacaoId`. A versão
+distingue o processo atual de um reinício em que a contagem do vetor pode
+reaparecer. O identificador permite repetir o mesmo pedido sem reaplicar
+o valor enquanto a instância mantém o estado em memória. A resposta 200
+devolve a conta atualizada com o novo vetor. A resposta 409 devolve a relação
+causal, os vetores e `contaAtual`, sem aplicar a operação. Para reproduzir
+o 409, consulte a conta, faça um depósito por outro cliente e sincronize com
+o vetor guardado na consulta anterior.
+
+O app consulta as agências a cada dois segundos em primeiro plano. Quando
+a agência responsável volta a responder, envia a fila da conta em ordem.
+Em caso de 409, atualiza o saldo confirmado e exige revisão dos pedidos
+recusados. Depósitos e saques podem ser registrados offline depois de
+consultar a conta. Transferências continuam sendo enviadas online.
+
+## Verificação
+
+Com RabbitMQ local e, para os testes do navegador da Sprint 1, Chromium do
+Playwright instalado:
 
 ```powershell
 $env:RABBITMQ_URL_TESTES = "amqp://guest:guest@127.0.0.1:5672/"
 $env:RABBITMQ_MANAGEMENT_URL_TESTES = "http://127.0.0.1:15672"
-python -m pytest agencia/tests tests/e2e/test_sprint2.py tests/e2e/test_sprint3.py -q
+python -m pytest agencia/tests tests/e2e -q
+Set-Location app_mobile
+flutter analyze
+flutter test
 ```
 
-O teste de eleição usa três processos reais, encerra a líder, confere a nova
-liderança e verifica o retorno da antiga líder e a perda de maioria. Os testes
-do cliente Flutter verificam o roteamento por partição, a sessão e o tratamento
-de falha em uma operação bancária.
-
-## Uso de IA
-
-Codex (OpenAI) apoiou o desenho e a implementação da eleição, do cliente
-Flutter, dos testes e da documentação. O autor deve revisar o código e saber
-explicar a eleição, os limites da recuperação e o fluxo de cada operação.
+Veja [as capturas e a transcrição](../evidencias/sprint3/README.md) e
+[as respostas da Sprint 3](../RESPOSTAS.md#sprint-3).
