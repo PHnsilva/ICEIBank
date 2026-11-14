@@ -103,7 +103,7 @@ async def agencia_autenticada(
     corpo = await request.json()
     if not isinstance(corpo, dict):
         raise erro_401("Credencial da agência não corresponde à mensagem.")
-    origem = corpo.get("origemAgencia")
+    origem = corpo.get("origemId", corpo.get("liderId"))
     if (type(origem) is not int or origem not in range(3) or origem == estado.agencia_id
             or claims.get("tipo") != "agencia" or claims["sub"] != f"agencia-{origem}"
             or not hmac.compare_digest(str(claims.get("mensagem", "")), resumo_mensagem(request.url.path, corpo))):

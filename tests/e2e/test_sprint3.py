@@ -1,47 +1,26 @@
 from scripts.ambiente_sprint2 import aguardar
 
 
-def test_reeleicao_apos_falha_da_lider_e_retorno(agencias):
+def test_bully_converge_para_maior_id_apos_falha_e_retorno(agencias):
     ambiente = agencias["ambiente"]
 
-    def url(agencia, caminho):
-        return f"http://127.0.0.1:{4078 + agencia}{caminho}"
+    def consenso(ids, lider):
+        return all(
+            ambiente.cliente.get(f"http://127.0.0.1:{4078 + agencia}/bully/lider").json()
+            == {"idAgencia": agencia, "liderAtual": lider}
+            for agencia in ids
+        )
 
-    def status(agencia):
-        return ambiente.cliente.get(url(agencia, "/cluster/status")).json()
-
-    def consenso(agencias):
-        visoes = [status(agencia) for agencia in agencias]
-        lideres = [visao for visao in visoes if visao["papel"] == "lider"]
-        if len(lideres) == 1 and all(
-            visao["liderId"] == lideres[0]["agenciaId"]
-            and visao["mandato"] == lideres[0]["mandato"]
-            for visao in visoes
-        ):
-            return lideres[0]
-
-    resposta = ambiente.cliente.post(
-        url(0, "/interno/eleicao/voto"), json={"origemAgencia": 1, "mandato": 999}
-    )
-    assert resposta.status_code == 401
-    todas = {0, 1, 2}
-    inicial = aguardar(lambda: consenso(todas))
-    antiga = inicial["agenciaId"]
-    restantes = todas - {antiga}
-    ambiente.parar(antiga)
+    aguardar(lambda: consenso((0, 1, 2), 2))
+    ambiente.parar(2)
     try:
-        nova = aguardar(lambda: consenso(restantes))
-        assert nova["agenciaId"] in restantes
-        assert nova["mandato"] > inicial["mandato"]
+        aguardar(lambda: consenso((0, 1), 1))
+        ambiente.parar(1)
+        try:
+            aguardar(lambda: consenso((0,), 0))
+        finally:
+            ambiente.iniciar(1)
+        aguardar(lambda: consenso((0, 1), 1))
     finally:
-        ambiente.iniciar(antiga)
-    assert aguardar(lambda: consenso(todas)) == nova
-
-    paradas = todas - {nova["agenciaId"]}
-    for agencia in paradas:
-        ambiente.parar(agencia)
-    try:
-        aguardar(lambda: status(nova["agenciaId"])["liderId"] is None)
-    finally:
-        for agencia in paradas:
-            ambiente.iniciar(agencia)
+        ambiente.iniciar(2)
+    aguardar(lambda: consenso((0, 1, 2), 2))

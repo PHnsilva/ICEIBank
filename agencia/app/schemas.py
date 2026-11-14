@@ -1,14 +1,19 @@
 """Esquemas de entrada e saída da API REST."""
 
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Literal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_serializer
+
+from .config import NUMERO_AGENCIAS
 
 CENTAVOS = Decimal("0.01")
 IdConta = Annotated[int, Field(strict=True, ge=0)]
 SaldoInicial = Annotated[Decimal, Field(ge=0, max_digits=16, decimal_places=2)]
 ValorPositivo = Annotated[Decimal, Field(gt=0, max_digits=16, decimal_places=2)]
+Vetor = Annotated[list[Annotated[int, Field(strict=True, ge=0)]],
+                  Field(min_length=NUMERO_AGENCIAS, max_length=NUMERO_AGENCIAS)]
 
 
 def formatar_moeda(valor: Decimal) -> str:
@@ -36,6 +41,17 @@ class OperacaoValor(EsquemaBase):
     """Valor de um depósito ou saque."""
 
     valor: ValorPositivo
+
+
+TipoMovimentacao = Literal["DEPOSITO", "SAQUE"]
+
+
+class OperacaoPendente(OperacaoValor):
+    """Operação sobre o estado conhecido pelo app na última consulta."""
+    tipo: TipoMovimentacao
+    vetor_conhecido: Vetor = Field(alias="vetorConhecido")
+    versao_agencia: UUID | None = Field(default=None, alias="versaoAgencia")
+    operacao_id: UUID | None = Field(default=None, alias="operacaoId")
 
 
 class TransferenciaSolicitada(EsquemaBase):
@@ -71,3 +87,8 @@ class ContaSaida(EsquemaBase):
     @field_serializer("saldo")
     def serializar_saldo(self, saldo: Decimal) -> str:
         return formatar_moeda(saldo)
+
+
+class ContaComVetor(ContaSaida):
+    vetor_atual: Vetor = Field(alias="vetorAtual")
+    versao_agencia: UUID = Field(alias="versaoAgencia")

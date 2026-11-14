@@ -1,167 +1,122 @@
-"""Eleição por maioria entre as agências, com mandatos e batimentos HTTP."""
-
+"""Eleição Bully e verificação periódica da líder conhecida."""
 import asyncio
-import json
 import logging
-import os
-import random
-from pathlib import Path
-from time import monotonic
 
 import httpx
 
 from ..auth import ConfiguracaoAuth, token_agencia
 from ..config import NUMERO_AGENCIAS, porta_da_agencia
+from ..estado_agencia import EstadoAgencia
 
-VOTO = "/interno/eleicao/voto"
-BATIMENTO = "/interno/eleicao/batimento"
-MAIORIA = NUMERO_AGENCIAS // 2 + 1
-INTERVALO_BATIMENTO = 0.3
-PRAZO_MAIORIA = 0.9
+ELEICAO = "/bully/eleicao"
+COORDENADOR = "/bully/coordenador"
+LIDER = "/bully/lider"
+INTERVALO_HEARTBEAT = 3.0
+TIMEOUT_HTTP = 1.0
 logger = logging.getLogger("uvicorn.error")
 
 
 class Eleicao:
-    def __init__(self, agencia_id: int, arquivo: Path, auth: ConfiguracaoAuth):
-        self.agencia_id = agencia_id
-        self.arquivo = arquivo
+    def __init__(self, estado: EstadoAgencia, auth: ConfiguracaoAuth):
+        self.estado = estado
+        self.agencia_id = estado.agencia_id
         self.auth = auth
-        self.pares = [par for par in range(NUMERO_AGENCIAS) if par != agencia_id]
-        self.mandato = 0
-        self.voto = None
-        try:
-            estado = json.loads(arquivo.read_text(encoding="utf-8"))
-        except FileNotFoundError:
-            pass
-        else:
-            self.mandato = estado["mandato"]
-            self.voto = estado["voto"]
-            if (type(self.mandato) is not int or self.mandato < 0
-                    or (self.voto is not None and
-                        (type(self.voto) is not int or self.voto not in range(NUMERO_AGENCIAS)))):
-                raise ValueError("Estado persistido da eleição inválido.")
-        self.papel = "seguidora"
-        self.lider = None
-        self.ultima_maioria = 0.0
-        self.protegido_ate = monotonic() + PRAZO_MAIORIA if self.mandato else 0.0
-        self._renovar_prazo()
-
-    def _renovar_prazo(self):
-        self.prazo_eleicao = monotonic() + random.uniform(1.2, 2.0)
-
-    def _gravar_voto(self, mandato, voto):
-        self.arquivo.parent.mkdir(parents=True, exist_ok=True)
-        temporario = self.arquivo.with_suffix(".tmp")
-        with temporario.open("w", encoding="utf-8") as arquivo:
-            json.dump({"mandato": mandato, "voto": voto}, arquivo)
-            arquivo.flush()
-            os.fsync(arquivo.fileno())
-        temporario.replace(self.arquivo)
-        self.mandato, self.voto = mandato, voto
-
-    def _seguir(self, lider=None):
-        if self.papel != "seguidora" or self.lider != lider:
-            logger.info("Eleição agência %s: mandato %s, seguidora, líder %s",
-                        self.agencia_id, self.mandato, lider)
-        self.papel = "seguidora"
-        self.lider = lider
-        self._renovar_prazo()
-
-    def _atualizar_mandato(self, mandato):
-        if mandato > self.mandato:
-            self._gravar_voto(mandato, None)
-            self._seguir()
+        self.pares = tuple(par for par in range(NUMERO_AGENCIAS) if par != self.agencia_id)
+        self.maiores = tuple(par for par in self.pares if par > self.agencia_id)
+        self.lider: int | None = None
+        self.solicitada = asyncio.Event()
 
     def status(self):
-        lider = self.lider
-        agora = monotonic()
-        if self.papel == "lider" and agora >= self.ultima_maioria + PRAZO_MAIORIA:
-            lider = None
-        elif self.papel == "seguidora" and agora >= self.prazo_eleicao:
-            lider = None
-        return {"agenciaId": self.agencia_id, "mandato": self.mandato,
-                "papel": "seguidora" if lider is None and self.papel == "lider" else self.papel,
-                "liderId": lider}
+        return {"idAgencia": self.agencia_id, "liderAtual": self.lider}
 
-    def votar(self, origem, mandato):
-        # Uma confirmação recente pode ainda sustentar o prazo de uma líder.
-        protegido_ate = self.protegido_ate
-        if self.papel == "lider":
-            protegido_ate = max(protegido_ate, self.ultima_maioria + PRAZO_MAIORIA)
-        if mandato > self.mandato and monotonic() < protegido_ate:
-            return {"mandato": self.mandato, "aceito": False}
-        self._atualizar_mandato(mandato)
-        aceito = (mandato == self.mandato and self.voto in (None, origem)
-                  and self.lider in (None, origem))
+    def _registrar(self, tipo, **detalhes):
+        vetor = self.estado.relogio.evento_local()
+        self.estado.registro.registrar(tipo, vetor, detalhes)
+
+    def receber_eleicao(self, origem, vetor_envio):
+        vetor = self.estado.relogio.ao_receber(vetor_envio)
+        self.estado.registro.registrar("ELEICAO_RECEBIDA", vetor, {"de": origem, "minhaId": self.agencia_id})
+        self.solicitada.set()
+
+    def receber_coordenador(self, lider, vetor_envio):
+        vetor = self.estado.relogio.ao_receber(vetor_envio)
+        aceito = lider > self.agencia_id and (self.lider is None or lider >= self.lider)
+        self.estado.registro.registrar("LIDER_ANUNCIADO", vetor, {"liderId": lider, "aceito": aceito})
         if aceito:
-            if self.voto is None:
-                self._gravar_voto(mandato, origem)
-            self._renovar_prazo()
-            self.protegido_ate = monotonic() + PRAZO_MAIORIA
-        return {"mandato": self.mandato, "aceito": aceito}
+            self.lider = lider
+        elif lider < self.agencia_id:
+            self.solicitada.set()
 
-    def receber_batimento(self, origem, mandato):
-        self._atualizar_mandato(mandato)
-        aceito = (mandato == self.mandato and self.lider in (None, origem)
-                  and self.papel != "lider")
-        if aceito:
-            self._seguir(origem)
-            self.protegido_ate = monotonic() + PRAZO_MAIORIA
-        return {"mandato": self.mandato, "aceito": aceito}
-
-    async def _enviar(self, cliente, par, caminho, mandato):
-        corpo = {"origemAgencia": self.agencia_id, "mandato": mandato}
+    async def _enviar(self, cliente, par, caminho, campo):
+        corpo = {campo: self.agencia_id, "vetorEnvio": self.estado.relogio.ao_enviar()}
         token = token_agencia(self.auth, self.agencia_id, par, caminho, corpo)
         try:
             resposta = await cliente.post(
                 f"http://127.0.0.1:{porta_da_agencia(par)}{caminho}",
                 json=corpo, headers={"Authorization": f"Bearer {token}"},
             )
+            return resposta.status_code == 200
+        except httpx.RequestError:
+            return False
+
+    async def _disputar(self, cliente):
+        self._registrar("ELEICAO_INICIADA", idAgencia=self.agencia_id)
+        # As rotas e esta tarefa usam o mesmo event loop. Um anúncio recebido
+        # enquanto esperamos HTTP tem prioridade sobre a resposta da sondagem.
+        lider_anterior = self.lider
+        respostas = await asyncio.gather(*(
+            self._enviar(cliente, par, ELEICAO, "origemId") for par in self.maiores
+        ))
+        if any(respostas):
+            if self.lider == self.agencia_id:
+                self.lider = None
+            return
+        if self.lider != lider_anterior and self.lider is not None:
+            return
+        if self.lider != self.agencia_id:
+            self.lider = self.agencia_id
+            self._registrar("TORNOU_LIDER", idAgencia=self.agencia_id)
+            logger.info("Bully: agência %s tornou-se líder", self.agencia_id)
+        await asyncio.gather(*(
+            self._enviar(cliente, par, COORDENADOR, "liderId") for par in self.pares
+        ))
+
+    async def _consultar(self, cliente, par):
+        try:
+            resposta = await cliente.get(f"http://127.0.0.1:{porta_da_agencia(par)}{LIDER}")
             resposta.raise_for_status()
             dados = resposta.json()
-            if isinstance(dados, dict) and type(dados.get("mandato")) is int:
+            if isinstance(dados, dict) and dados.get("idAgencia") == par:
                 return dados
         except (httpx.HTTPError, ValueError):
             pass
-        return {}
+        return None
 
-    async def _consultar_pares(self, cliente, caminho, mandato):
-        respostas = await asyncio.gather(
-            *(self._enviar(cliente, par, caminho, mandato) for par in self.pares)
-        )
-        self._atualizar_mandato(max(r.get("mandato", mandato) for r in respostas))
-        return 1 + sum(r.get("aceito") is True and r["mandato"] == mandato for r in respostas)
-
-    async def _disputar(self, cliente):
-        mandato = self.mandato + 1
-        self._gravar_voto(mandato, self.agencia_id)
-        self.papel, self.lider = "candidata", None
-        self._renovar_prazo()
-        logger.info("Eleição agência %s: candidatura no mandato %s", self.agencia_id, mandato)
-        inicio = monotonic()
-        votos = await self._consultar_pares(cliente, VOTO, mandato)
-        if (self.papel == "candidata" and self.mandato == mandato and votos >= MAIORIA
-                and monotonic() < inicio + PRAZO_MAIORIA):
-            self.papel, self.lider = "lider", self.agencia_id
-            self.ultima_maioria = inicio
-            logger.info("Eleição agência %s: eleita líder no mandato %s", self.agencia_id, mandato)
+    async def _verificar(self, cliente):
+        lider = self.lider
+        if lider is None:
+            await self._disputar(cliente)
+        elif lider == self.agencia_id:
+            # Recupera a prioridade de uma agência maior caso seu anúncio
+            # de retorno tenha sido perdido.
+            respostas = await asyncio.gather(*(self._consultar(cliente, par) for par in self.maiores))
+            if any(respostas) and self.lider == lider:
+                await self._disputar(cliente)
+        else:
+            resposta = await self._consultar(cliente, lider)
+            if self.lider == lider and (resposta is None or resposta.get("liderAtual") != lider):
+                self.lider = None
+                self._registrar("LIDER_NAO_RESPONDEU", liderAtual=lider, agencia=self.agencia_id)
+                await self._disputar(cliente)
 
     async def executar(self):
-        async with httpx.AsyncClient(timeout=0.25, trust_env=False) as cliente:
+        self.solicitada.set()
+        async with httpx.AsyncClient(timeout=TIMEOUT_HTTP, trust_env=False) as cliente:
             while True:
-                if self.papel == "lider":
-                    inicio = monotonic()
-                    if inicio >= self.ultima_maioria + PRAZO_MAIORIA:
-                        self._seguir()
-                        continue
-                    mandato = self.mandato
-                    confirmacoes = await self._consultar_pares(cliente, BATIMENTO, mandato)
-                    if (self.papel == "lider" and self.mandato == mandato
-                            and confirmacoes >= MAIORIA
-                            and monotonic() < self.ultima_maioria + PRAZO_MAIORIA):
-                        self.ultima_maioria = inicio
-                    await asyncio.sleep(INTERVALO_BATIMENTO)
-                elif monotonic() >= self.prazo_eleicao:
-                    await self._disputar(cliente)
+                try:
+                    await asyncio.wait_for(self.solicitada.wait(), timeout=INTERVALO_HEARTBEAT)
+                except TimeoutError:
+                    await self._verificar(cliente)
                 else:
-                    await asyncio.sleep(0.08)
+                    self.solicitada.clear()
+                    await self._disputar(cliente)

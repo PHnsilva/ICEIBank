@@ -87,8 +87,7 @@ def criar_aplicacao(
         registro=RegistroEventos(agencia_id, diretorio_dados),
     )
     if ativar_eleicao:
-        caminho = app.state.estado_agencia.registro.caminho.with_name(f"eleicao-agencia-{agencia_id}.json")
-        app.state.eleicao = Eleicao(agencia_id, caminho, app.state.auth)
+        app.state.eleicao = Eleicao(app.state.estado_agencia, app.state.auth)
         app.include_router(eleicao_router)
 
     @app.exception_handler(RequestValidationError)
