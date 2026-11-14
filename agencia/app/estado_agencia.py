@@ -3,8 +3,9 @@
 from asyncio import Lock
 from dataclasses import dataclass
 from decimal import Decimal
+from uuid import UUID, uuid4
 
-
+from .schemas import ContaComVetor, OperacaoPendente
 from .services.registro_eventos import RegistroEventos
 from .services.relogio_vetorial import RelogioVetorial
 
@@ -31,4 +32,6 @@ class EstadoAgencia:
         self.relogio = relogio
         self.registro = registro
         self.contas: dict[int, Conta] = {}
+        self.versao = uuid4()
+        self.sincronizacoes: dict[tuple[int, UUID], tuple[OperacaoPendente, ContaComVetor]] = {}
         self.lock = Lock()

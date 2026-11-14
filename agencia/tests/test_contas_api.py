@@ -40,12 +40,43 @@ def test_cria_e_consulta_conta_com_saldo_monetario_consistente(
         "nomeAluno": "Ana",
         "saldo": "100.00",
     }
-    assert cliente.get("/contas/0").json() == resposta_criacao.json()
+    consulta = cliente.get("/contas/0").json()
+    assert consulta.pop("vetorAtual") == [1, 0, 0]
+    assert consulta.pop("versaoAgencia")
+    assert consulta == resposta_criacao.json()
 
     evento = json.loads((tmp_path / "eventos-agencia-0.jsonl").read_text(encoding="utf-8"))
     assert evento["tipo"] == "CRIAR_CONTA"
     assert evento["timestampVetorial"] == [1, 0, 0]
     assert evento["detalhes"]["saldo"] == "100.00"
+
+
+def test_sincronizacao_rejeita_base_desatualizada_e_repeticao_nao_altera_saldo(cliente):
+    criar_conta(cliente)
+    consulta = cliente.get("/contas/0").json()
+    rota = "/contas/0/sincronizar"
+    pedido = {
+        "tipo": "SAQUE", "valor": "10.00", "vetorConhecido": consulta["vetorAtual"],
+        "versaoAgencia": consulta["versaoAgencia"], "operacaoId": "96169520-4778-49c5-95a1-110ef1be965e",
+    }
+
+    assert cliente.post("/contas/0/depositar", json={"valor": "5.00"}).status_code == 200
+    conflito = cliente.post(rota, json=pedido)
+    assert conflito.status_code == 409
+    assert conflito.json()["relacao"] == "ANTES"
+    assert conflito.json()["contaAtual"]["saldo"] == "105.00"
+    assert cliente.post(rota, json={**pedido, "vetorConhecido": [0, 1, 0]}).json()["relacao"] == "CONCORRENTES"
+    assert cliente.post(rota, json={**pedido, "vetorConhecido": [True, 0, 0]}).status_code == 422
+
+    pedido["vetorConhecido"] = conflito.json()["vetorAtual"]
+    resposta = cliente.post(rota, json=pedido)
+    assert resposta.status_code == 200
+    assert resposta.json()["saldo"] == "95.00"
+    assert cliente.post(rota, json=pedido).json() == resposta.json()
+    assert cliente.get("/contas/0").json() == resposta.json()
+    assert cliente.post(rota, json={**pedido, "valor": "5.00"}).status_code == 400
+    assert cliente.post(rota, json={**pedido, "operacaoId": None, "vetorConhecido": resposta.json()["vetorAtual"],
+                                   "versaoAgencia": "d8b1d418-22a8-4139-b50c-19a01cb92413"}).status_code == 409
 
 
 def test_rejeita_conta_de_outra_agencia(cliente: TestClient) -> None:
