@@ -1,5 +1,23 @@
 # ICEIBank para Android
 
+O [README principal](../README.md#7-sprint-3--executar-o-app-de-celular) traz a
+instalação Linux, os passos no emulador/USB e o roteiro completo de apresentação.
+
+## Alternativa Flutter Web
+
+Com as três agências da `main` iniciadas, execute nesta pasta:
+
+```bash
+flutter pub get
+flutter run -d web-server --web-hostname=127.0.0.1 --web-port=8080 \
+  --dart-define=ICEIBANK_HOST=localhost
+```
+
+Abra http://127.0.0.1:8080 na mesma máquina. As agências permitem essa origem
+local na porta 8080. Para demonstrar a rede indisponível, mantenha a página
+carregada e use DevTools → Network → Offline; depois retorne a Online.
+Isso executa o cliente Flutter no navegador e não substitui a validação Android.
+
 Cliente Flutter com login JWT, saldo, histórico, criação de conta, depósito,
 saque, transferência local e entre agências. O painel consulta as três
 agências e atualiza a líder e a disponibilidade automaticamente.
