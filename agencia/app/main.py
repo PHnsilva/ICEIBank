@@ -78,7 +78,12 @@ def criar_aplicacao(
     app.state.mensageria = broker
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[*URLS_AGENCIAS, *[f"http://127.0.0.1:{p}" for p in PORTAS_AGENCIAS]],
+        allow_origins=[
+            *URLS_AGENCIAS,
+            *[f"http://127.0.0.1:{p}" for p in PORTAS_AGENCIAS],
+            "http://localhost:8080",
+            "http://127.0.0.1:8080",
+        ],
         allow_methods=["GET", "POST"], allow_headers=["Authorization", "Content-Type"],
     )
     app.state.estado_agencia = EstadoAgencia(

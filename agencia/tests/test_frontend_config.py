@@ -16,3 +16,21 @@ def test_frontend_publico_e_cors_restrito(tmp_path):
         r = c.options("/contas", headers={"Origin": "https://estranho.example", "Access-Control-Request-Method": "POST"})
         assert r.status_code == 400
         assert "access-control-allow-origin" not in r.headers
+
+
+def test_flutter_web_local_autoriza_preflight_sem_liberar_outras_origens(tmp_path):
+    with TestClient(criar_aplicacao(0, tmp_path)) as c:
+        for origem in ("http://localhost:8080", "http://127.0.0.1:8080"):
+            r = c.options("/auth/login", headers={
+                "Origin": origem,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "authorization,content-type",
+            })
+            assert r.status_code == 200
+            assert r.headers["access-control-allow-origin"] == origem
+        for origem in ("http://192.168.1.20:8080", "http://localhost:8081"):
+            r = c.options("/auth/login", headers={
+                "Origin": origem, "Access-Control-Request-Method": "POST",
+            })
+            assert r.status_code == 400
+            assert "access-control-allow-origin" not in r.headers

@@ -1,0 +1,10 @@
+{
+  "name": "ICEIBank",
+  "short_name": "ICEIBank",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#008080",
+  "description": "Cliente acadêmico ICEIBank: agências e operações offline.",
+  "lang": "pt-BR"
+}
