@@ -265,8 +265,9 @@ class Filme:
             return f"{h:02}:{m:02}:{s:02}" + (",000" if srt else "")
 
         for n, c in enumerate(self.cenas, 1):
+            codigo = f"`{c['codigo']}`" if c["codigo"] else "—"
             indice.append(
-                f"| {marca(tempo)} | {c['sprint']} | {c['titulo']} | `{c['codigo']}` |"
+                f"| {marca(tempo)} | {c['sprint']} | {c['titulo']} | {codigo} |"
             )
             srt.append(
                 f"{n}\n{marca(tempo, True)} --> {marca(tempo + c['duracao'], True)}\nSprint {c['sprint']} — {c['titulo']}\n{c['legenda']}\n"
@@ -291,6 +292,8 @@ class Filme:
                 "0",
                 "-i",
                 str(lista),
+                "-t",
+                str(tempo),
                 "-vf",
                 "fps=5,format=yuv420p",
                 "-c:v",
