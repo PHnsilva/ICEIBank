@@ -1,6 +1,6 @@
 # Apresentação das três sprints
 
-A demonstração executa cada versão em processos reais, usa RabbitMQ nas sprints 2 e 3 e apresenta o cliente Flutter em uma tela de celular. O vídeo é um MP4 1920 × 1080, sem faixa de áudio, com capturas lentas, legendas incorporadas e trechos reais do código ao lado das operações.
+A demonstração executa cada versão em processos reais, usa RabbitMQ nas sprints 2 e 3 e apresenta o cliente Flutter em uma tela de celular. O vídeo é um MP4 1920 × 1080, sem faixa de áudio, com gravações da navegação, digitação, cliques e resultados, legendas incorporadas e o trecho do código correspondente ao lado de cada fluxo.
 
 ## Preparar
 
@@ -10,7 +10,7 @@ Use Linux, Python 3.12+, Git, Flutter 3.50.1, FFmpeg e as fontes DejaVu. Instale
 python3 -m venv .venv
 source .venv/bin/activate
 python -m scripts.preparar_apresentacao --flutter /caminho/flutter/bin/flutter
-python -m playwright install chromium
+python -m playwright install chromium ffmpeg
 ```
 
 O preparador instala `requirements-demo.txt`, cria duas worktrees em `.local/sprints/` e compila o Flutter Web para usar `127.0.0.1` como host das agências. Os recursos do renderizador Web são incluídos no build, sem depender de CDN durante a demonstração. O modo automatizado do SDK (`BOT=true`, `CI=true`) desativa sua sondagem de metadados de infraestrutura.
@@ -53,7 +53,7 @@ python -m scripts.gravar_apresentacao --chromium /caminho/chromium-headless-shel
 
 Para ensaiar somente um capítulo: `--somente 1`, `--somente 2` ou `--somente 3`. `--saida` permite escolher uma pasta nova. O comando recusa uma pasta de saída existente e verifica os commits históricos antes de gravar.
 
-A saída contém `ICEIBank-3-sprints.mp4`, legendas `.srt`, roteiro com tempos e referências `arquivo:linha`, imagens dos quadros, capturas originais e logs das execuções. Falhas de asserção interrompem a geração; um vídeo completo só é exportado ao terminar todos os cenários selecionados. As capturas históricas versionadas não são usadas no vídeo.
+A saída contém `ICEIBank-3-sprints.mp4`, legendas `.srt`, roteiro com tempos e referências `arquivo:linha`, gravações originais WebM, painéis de código usados na composição e logs das execuções. Falhas de asserção interrompem a geração; um vídeo completo só é exportado ao terminar todos os cenários selecionados. As capturas históricas versionadas não são usadas no vídeo. Não há telas isoladas de código: a aplicação permanece visível enquanto o trecho responsável aparece ao lado. A troca de sprint é indicada no cabeçalho do próprio fluxo. Os rótulos “execução real”, “sem áudio” e “código real” não são sobrepostos à gravação.
 
 ## Conteúdo por capítulo
 
@@ -63,7 +63,7 @@ A saída contém `ICEIBank-3-sprints.mp4`, legendas `.srt`, roteiro com tempos e
 | 2 | Transferência pelo frontend; publicação e confirmação por consulta; Manager e topologia; persistência de mensagens; ack e rejeição; causalidade e concorrência; destino desligado; mensagem retida; perda da conta no reinício; DLQ; ausência de reaplicação automática |
 | 3 | Painel Flutter; login; criação e consulta; depósito e saque; transferências local e remota; histórico; queda e retorno da líder; heartbeat e timeout; depósito sem rede; reconexão e sincronização; conflito real HTTP 409; revisão do aviso; repetição idempotente; cache Hive; histórico de liderança |
 
-As legendas e os trechos de código pertencem à mesma versão da sprint exibida. As respostas registradas em `requisicoes.ndjson` não incluem o token de login. As contas usam apenas dados fictícios de demonstração.
+Os clipes usam gravação nativa do navegador, apresentada em velocidade normal a 15 quadros por segundo. A digitação e os cliques são espaçados para permitir acompanhar a operação, e uma pausa curta mantém o resultado legível. Um indicador do ponteiro auxilia a localizar o clique durante a gravação. As legendas e os trechos de código pertencem à mesma versão da sprint exibida. As respostas registradas em `requisicoes.ndjson` não incluem o token de login. As contas usam apenas dados fictícios de demonstração.
 
 ## Alcance da validação mobile
 

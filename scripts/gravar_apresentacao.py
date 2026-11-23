@@ -5,7 +5,6 @@ RabbitMQ com Manager deve estar ativo. Não usa evidências históricas como exe
 """
 
 import argparse
-import io
 import json
 import re
 import subprocess
@@ -16,7 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFont
 from playwright.sync_api import sync_playwright
 
 from scripts.ambiente_apresentacao import (
@@ -38,8 +37,11 @@ class Filme:
     def __init__(self, saida):
         self.saida = saida.resolve()
         self.saida.mkdir(parents=True, exist_ok=False)
-        (self.saida / "quadros").mkdir()
-        (self.saida / "capturas").mkdir()
+        (self.saida / "paineis").mkdir()
+        (self.saida / "originais").mkdir()
+        (self.saida / "clipes").mkdir()
+        self.paginas = {}
+        self.atual = None
         self.cenas = []
         self.sprint = 0
         self.codigo = ROOT
@@ -78,7 +80,7 @@ class Filme:
         d.text((45, 28), "ICEIBank", fill=TEAL, font=self.font(28, bold=True))
         d.text(
             (290, 31),
-            f"SPRINT {self.sprint}  |  EXECUÇÃO REAL  |  SEM ÁUDIO",
+            f"SPRINT {self.sprint}",
             fill=MUTED,
             font=self.font(23),
         )
@@ -87,7 +89,7 @@ class Filme:
         self.texto(d, (60, 887), legenda, 1780, size=31, espaco=11)
         d.text(
             (45, 1052),
-            f"{self.data} • Demonstração acadêmica • Capturas e respostas geradas nesta execução",
+            f"{self.data} • ICEIBank",
             fill=MUTED,
             font=self.font(17),
         )
@@ -100,6 +102,16 @@ class Filme:
         self, im, d, caminho, busca, xy=(1340, 160), largura=510, linhas=16, size=19
     ):
         texto = (self.codigo / caminho).read_text(encoding="utf-8").splitlines()
+        focos = {
+            "async def criar_conta": "conta = Conta(",
+            "async def depositar": "conta.saldo += valor",
+            "async def sacar": "conta.saldo -= valor",
+            "if agencia_destino == estado.agencia_id": "conta_destino.saldo += valor",
+            "timestamp_envio =": "resposta = await cliente.post(",
+        }
+        foco = focos.get(busca)
+        if foco and any(foco in linha for linha in texto):
+            busca = foco
         inicio = next(i for i, linha in enumerate(texto) if busca in linha)
         x, y = xy
         caminho_visivel = "\n".join(
@@ -112,7 +124,7 @@ class Filme:
         )
         d.text(
             (x, y + 5),
-            f"Código real • linha {inicio + 1}",
+            f"Linha {inicio + 1}",
             fill=MUTED,
             font=self.font(18),
         )
@@ -141,143 +153,200 @@ class Filme:
                 y += size + 5
         return inicio + 1
 
-    def salvar(self, im, titulo, legenda, codigo="", duracao=12):
-        arquivo = f"quadros/{len(self.cenas) + 1:03d}.png"
-        im.save(self.saida / arquivo)
+    def registrar_pagina(self, pagina):
+        # O vídeo nativo captura a navegação, a digitação, os cliques e as respostas.
+        inicio = time.monotonic()
+        caminho = pagina.video.path()
+        self.paginas[pagina] = {"inicio": inicio, "ultimo": 0.0, "video": str(caminho)}
+        return pagina
+
+    def tela(self, pagina, titulo, legenda, caminho, busca, mobile=False, duracao=12):
+        self.atual = pagina
+        registro = self.paginas[pagina]
+        observado = time.monotonic() - registro["inicio"] - registro["ultimo"]
+        # A interação é gravada antes da pausa curta para ler o resultado.
+        minimo = max(7.0, min(11.0, len(legenda.split()) / 3.8))
+        pagina.wait_for_timeout(max(1600, (minimo - observado) * 1000))
+        fim = time.monotonic() - registro["inicio"]
+        im, d = self.base(titulo, legenda)
+        if mobile:
+            d.text(
+                (570, 150), "Cliente Flutter", fill=TEAL, font=self.font(30, bold=True)
+            )
+            d.text((570, 198), "Tela de celular", fill=MUTED, font=self.font(23))
+            linha = self.trecho(
+                im, d, caminho, busca, xy=(570, 255), largura=1230, linhas=18, size=23
+            )
+            x, y, w, h = 80, 140, 373, 710
+        else:
+            linha = self.trecho(im, d, caminho, busca)
+            x, y, w, h = 45, 140, 1260, 689
+        numero = len(self.cenas) + 1
+        painel = f"paineis/{numero:03d}.png"
+        im.save(self.saida / painel)
         self.cenas.append(
             {
                 "titulo": titulo,
                 "legenda": legenda,
                 "sprint": self.sprint,
-                "codigo": codigo,
-                "arquivo": arquivo,
-                "duracao": duracao,
+                "codigo": f"{caminho}:{linha}",
+                "painel": painel,
+                "origem": registro["video"],
+                "inicioOrigem": registro["ultimo"],
+                "duracaoOrigem": fim - registro["ultimo"],
+                "area": [x, y, w, h],
             }
         )
+        registro["ultimo"] = fim
         (self.saida / "cenas.json").write_text(
             json.dumps(self.cenas, ensure_ascii=False, indent=2), encoding="utf-8"
         )
-        print(f"Cena {len(self.cenas):02}: sprint {self.sprint} — {titulo}", flush=True)
-
-    def tela(self, pagina, titulo, legenda, caminho, busca, mobile=False, duracao=12):
-        pagina.wait_for_timeout(500)
-        captura = pagina.screenshot()
-        (self.saida / "capturas" / f"{len(self.cenas) + 1:03d}.png").write_bytes(
-            captura
-        )
-        foto = Image.open(io.BytesIO(captura)).convert("RGB")
-        im, d = self.base(titulo, legenda)
-        if mobile:
-            foto = ImageOps.contain(foto, (440, 710))
-            im.paste(foto, (80, 140))
-            d.text(
-                (570, 150),
-                "CLIENTE FLUTTER REAL",
-                fill=TEAL,
-                font=self.font(30, bold=True),
-            )
-            d.text(
-                (570, 198),
-                "Flutter Web em viewport de celular • 420 × 800",
-                fill=MUTED,
-                font=self.font(23),
-            )
-            linha = self.trecho(
-                im, d, caminho, busca, xy=(570, 255), largura=1230, linhas=18, size=23
-            )
-        else:
-            foto = ImageOps.contain(foto, (1260, 710))
-            im.paste(foto, (45, 140))
-            linha = self.trecho(im, d, caminho, busca)
-        self.salvar(im, titulo, legenda, f"{caminho}:{linha}", duracao)
+        print(f"Fluxo {numero:02d}: Sprint {self.sprint} — {titulo}", flush=True)
 
     def dados(self, titulo, dados, legenda, caminho, busca, duracao=14):
-        im, d = self.base(titulo, legenda)
-        d.rounded_rectangle((45, 140, 1305, 844), radius=12, fill="#111f30")
-        d.text(
-            (70, 157),
-            "Recorte de respostas e registros reais desta execução",
-            fill=TEAL,
-            font=self.font(23),
-        )
-        txt = (
-            dados
-            if isinstance(dados, str)
-            else json.dumps(dados, ensure_ascii=False, indent=2)
-        )
-        linhas = txt.splitlines()
-        f = self.font(23, mono=True)
-        y = 204
-        for linha in linhas:
-            for parte in textwrap.wrap(
-                linha, width=84, replace_whitespace=False, drop_whitespace=False
-            ) or [""]:
-                if y > 814:
-                    break
-                d.text((70, y), parte, font=f, fill=INK)
-                y += 28
-            if y > 814:
-                break
-        linha = self.trecho(im, d, caminho, busca)
-        self.salvar(im, titulo, legenda, f"{caminho}:{linha}", duracao)
-
-    def codigo_frame(self, titulo, legenda, caminho, busca, linhas=21, duracao=16):
-        im, d = self.base(titulo, legenda)
-        linha = self.trecho(
-            im, d, caminho, busca, xy=(60, 150), largura=1770, linhas=linhas, size=25
-        )
-        self.salvar(im, titulo, legenda, f"{caminho}:{linha}", duracao)
-
-    def capitulo(self, titulo, itens, legenda):
-        im, d = self.base(titulo, legenda)
-        y = 170
-        for numero, item in enumerate(itens, 1):
-            d.text((65, y), f"{numero:02}", font=self.font(42, bold=True), fill=TEAL)
-            y = self.texto(d, (160, y + 4), item, 1600, size=34, espaco=14) + 55
-        self.salvar(im, titulo, legenda, duracao=16)
+        # Mantém o sistema visível: consultas e navegação acompanham a explicação.
+        pagina = self.atual
+        if pagina is None or pagina.is_closed():
+            return
+        mobile = pagina.viewport_size["width"] < 600
+        if mobile:
+            mobile_operacao(pagina, "Consultar saldo")
+            pagina.get_by_role("button", name="Consultar saldo", exact=True).click()
+            pagina.wait_for_timeout(600)
+            pagina.mouse.wheel(0, 180)
+            pagina.wait_for_timeout(500)
+            pagina.mouse.wheel(0, -180)
+        elif ":15672" in pagina.url:
+            pagina.reload()
+            pagina.wait_for_timeout(750)
+            pagina.mouse.move(450, 440)
+            pagina.mouse.wheel(0, 180)
+            pagina.wait_for_timeout(500)
+            pagina.mouse.wheel(0, -180)
+        else:
+            if (
+                isinstance(dados, dict)
+                and dados.get("metodo") == "POST"
+                and dados.get("caminho") == "/contas"
+                and dados.get("http") == 400
+            ):
+                pagina.locator("summary").click()
+                for campo in ("id", "nomeAluno", "saldoInicial"):
+                    web_preencher(
+                        pagina,
+                        f"#criar-form [name={campo}]",
+                        str(dados["pedido"][campo]),
+                    )
+                with pagina.expect_response(
+                    lambda r: r.request.method == "POST" and r.url.endswith("/contas")
+                ):
+                    pagina.locator("#criar-form button").click()
+                pagina.locator("summary").click()
+                pagina.locator("#mensagem").scroll_into_view_if_needed()
+                self.tela(pagina, titulo, legenda, caminho, busca)
+                return
+            if isinstance(dados, dict) and dados.get("metodo") == "GET":
+                conta = re.match(r"/contas/(\d+)", dados.get("caminho", ""))
+                if conta:
+                    consultar_web(pagina, int(conta.group(1)))
+            else:
+                pagina.locator("#consulta-form button").click()
+            pagina.wait_for_timeout(500)
+            if pagina.locator("#banco-panel").is_visible() and not (
+                isinstance(dados, dict) and dados.get("http", 200) >= 400
+            ):
+                pagina.locator("#historico-atualizar").click()
+                pagina.wait_for_timeout(500)
+                pagina.locator(".history").scroll_into_view_if_needed()
+                pagina.wait_for_timeout(500)
+                pagina.locator("#consulta-form").scroll_into_view_if_needed()
+        self.tela(pagina, titulo, legenda, caminho, busca, mobile=mobile)
 
     def exportar(self):
-        # Subtitles are burned into the PNGs. The MP4 has no audio stream.
-        lista = self.saida / "concat.txt"
-        lista.write_text(
-            "".join(
-                f"file '{c['arquivo']}'\nduration {c['duracao']}\n" for c in self.cenas
-            )
-            + f"file '{self.cenas[-1]['arquivo']}'\n",
-            encoding="utf-8",
-        )
         indice = [
-            "# ICEIBank — demonstração das três sprints",
+            "# ICEIBank — fluxos das três sprints",
             "",
-            "Vídeo sem áudio. Cada cena usa capturas, respostas e código reais.",
-            "O cliente Flutter foi executado em navegador com viewport de celular; não é gravação de Android.",
+            "Navegação, digitação, cliques e resultados gravados no navegador, com código ao lado e legendas.",
+            "Cliente mobile executado em Flutter Web, em tela de celular.",
             "",
-            "| Início | Sprint | Cena | Código |",
+            "| Início | Sprint | Fluxo | Código |",
             "| --- | --- | --- | --- |",
         ]
         srt = []
-        tempo = 0
+        tempo = 0.0
+        arquivos = []
 
         def marca(segundos, srt=False):
-            h = segundos // 3600
-            m = segundos % 3600 // 60
-            s = segundos % 60
-            return f"{h:02}:{m:02}:{s:02}" + (",000" if srt else "")
+            milis = round(segundos * 1000)
+            h = milis // 3600000
+            m = milis % 3600000 // 60000
+            s = milis % 60000 // 1000
+            ms = milis % 1000
+            return f"{h:02}:{m:02}:{s:02}" + (f",{ms:03}" if srt else "")
 
         for n, c in enumerate(self.cenas, 1):
-            codigo = f"`{c['codigo']}`" if c["codigo"] else "—"
+            # Os fluxos são apresentados em velocidade normal, a 15 quadros/s.
+            frames = round(c["duracaoOrigem"] * 15)
+            duracao = frames / 15
+            c["duracao"] = duracao
+            x, y, w, h = c["area"]
+            saida = self.saida / f"clipes/{n:03d}.mp4"
+            filtro = (
+                f"[0:v]scale={w}:{h}:flags=lanczos,fps=15,setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration=1[v];"
+                f"[1:v]format=rgb24[p];[p][v]overlay={x}:{y}:shortest=1,format=yuv420p[out]"
+            )
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-y",
+                    "-ss",
+                    str(c["inicioOrigem"]),
+                    "-i",
+                    c["origem"],
+                    "-loop",
+                    "1",
+                    "-framerate",
+                    "15",
+                    "-i",
+                    str(self.saida / c["painel"]),
+                    "-filter_complex_threads",
+                    "1",
+                    "-filter_complex",
+                    filtro,
+                    "-map",
+                    "[out]",
+                    "-frames:v",
+                    str(frames),
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    "veryfast",
+                    "-crf",
+                    "22",
+                    "-threads",
+                    "2",
+                    "-an",
+                    "-movflags",
+                    "+faststart",
+                    str(saida),
+                ],
+                check=True,
+            )
+            arquivos.append(saida)
             indice.append(
-                f"| {marca(tempo)} | {c['sprint']} | {c['titulo']} | {codigo} |"
+                f"| {marca(tempo)} | {c['sprint']} | {c['titulo']} | `{c['codigo']}` |"
             )
             srt.append(
-                f"{n}\n{marca(tempo, True)} --> {marca(tempo + c['duracao'], True)}\nSprint {c['sprint']} — {c['titulo']}\n{c['legenda']}\n"
+                f"{n}\n{marca(tempo, True)} --> {marca(tempo + duracao, True)}\nSprint {c['sprint']} — {c['titulo']}\n{c['legenda']}\n"
             )
-            tempo += c["duracao"]
-        (self.saida / "ICEIBank-roteiro.md").write_text(
-            "\n".join(indice) + "\n", encoding="utf-8"
-        )
-        (self.saida / "ICEIBank-legendas.srt").write_text(
-            "\n".join(srt), encoding="utf-8"
+            tempo += duracao
+            print(f"Composição {n}/{len(self.cenas)}", flush=True)
+        lista = self.saida / "concat.txt"
+        lista.write_text(
+            "".join(f"file '{p.as_posix()}'\n" for p in arquivos), encoding="utf-8"
         )
         subprocess.run(
             [
@@ -292,20 +361,8 @@ class Filme:
                 "0",
                 "-i",
                 str(lista),
-                "-t",
-                str(tempo),
-                "-vf",
-                "fps=5,format=yuv420p",
-                "-c:v",
-                "libx264",
-                "-preset",
-                "veryfast",
-                "-tune",
-                "stillimage",
-                "-crf",
-                "21",
-                "-threads",
-                "2",
+                "-c",
+                "copy",
                 "-an",
                 "-movflags",
                 "+faststart",
@@ -313,23 +370,89 @@ class Filme:
             ],
             check=True,
         )
-        print(
-            f"Vídeo pronto: {tempo // 60}min {tempo % 60}s | {len(self.cenas)} cenas",
-            flush=True,
+        (self.saida / "ICEIBank-roteiro.md").write_text(
+            "\n".join(indice) + "\n", encoding="utf-8"
         )
+        (self.saida / "ICEIBank-legendas.srt").write_text(
+            "\n".join(srt), encoding="utf-8"
+        )
+        (self.saida / "cenas.json").write_text(
+            json.dumps(self.cenas, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        print(
+            f"Vídeo pronto: {tempo:.2f} segundos | {len(self.cenas)} fluxos", flush=True
+        )
+
+
+CURSOR = """() => {
+  document.addEventListener('DOMContentLoaded', () => {
+    const p=document.createElement('div');p.id='cursor-apresentacao';
+    Object.assign(p.style,{position:'fixed',width:'17px',height:'17px',border:'2px solid #102a43',
+      borderRadius:'50%',background:'#55ddc099',pointerEvents:'none',zIndex:'2147483647',
+      left:'-30px',top:'-30px',transition:'transform .12s'});document.body.appendChild(p);
+    document.addEventListener('pointermove',e=>{p.style.left=(e.clientX-8)+'px';p.style.top=(e.clientY-8)+'px'},true);
+    document.addEventListener('pointerdown',()=>{p.style.transform='scale(1.65)';setTimeout(()=>p.style.transform='',230)},true);
+  });
+}"""
+
+
+class ContextoGravado:
+    def __init__(self, contexto, filme):
+        self.contexto, self.filme = contexto, filme
+
+    def new_page(self):
+        return self.filme.registrar_pagina(self.contexto.new_page())
+
+    def __getattr__(self, nome):
+        return getattr(self.contexto, nome)
+
+
+class NavegadorGravado:
+    def __init__(self, browser, filme):
+        self.browser, self.filme = browser, filme
+
+    def new_context(self, **opcoes):
+        viewport = opcoes.get("viewport", {"width": 1280, "height": 700})
+        contexto = self.browser.new_context(
+            **opcoes,
+            record_video_dir=str(self.filme.saida / "originais"),
+            record_video_size=viewport,
+        )
+        contexto.add_init_script(CURSOR)
+        return ContextoGravado(contexto, self.filme)
+
+    def new_page(self, **opcoes):
+        return self.new_context(**opcoes).new_page()
+
+    def close(self):
+        for contexto in list(self.browser.contexts):
+            contexto.close()
+        self.browser.close()
+
+    def __getattr__(self, nome):
+        return getattr(self.browser, nome)
+
+
+def web_preencher(pagina, seletor, valor):
+    campo = pagina.locator(seletor)
+    campo.click()
+    pagina.wait_for_timeout(180)
+    campo.press("ControlOrMeta+A")
+    campo.press_sequentially(valor, delay=75)
+    pagina.wait_for_timeout(180)
 
 
 def entrar_web(p):
     p.goto("http://localhost:4078")
-    p.locator("[name=usuario]").fill("aluno")
-    p.locator("[name=senha]").fill("iceibank-sprint1")
+    web_preencher(p, "[name=usuario]", "aluno")
+    web_preencher(p, "[name=senha]", "iceibank-sprint1")
     p.locator("#login-form button").click()
     p.locator("#banco-panel").wait_for(state="visible")
 
 
 def consultar_web(p, id):
     p.locator("#agencia").select_option(str(id % 3))
-    p.locator("#conta").fill(str(id))
+    web_preencher(p, "#conta", str(id))
     with p.expect_response(
         lambda r: (
             f"/contas/{id}" in r.url
@@ -343,8 +466,8 @@ def consultar_web(p, id):
 def operar_web(p, tipo, valor, destino=None):
     p.locator("#operacao").select_option(tipo)
     if destino is not None:
-        p.locator("#operacao-form [name=destino]").fill(str(destino))
-    p.locator("#operacao-form [name=valor]").fill(valor)
+        web_preencher(p, "#operacao-form [name=destino]", str(destino))
+    web_preencher(p, "#operacao-form [name=valor]", valor)
     with p.expect_response(
         lambda r: (
             r.request.method == "POST"
@@ -358,25 +481,10 @@ def operar_web(p, tipo, valor, destino=None):
 
 def sprint1(f, browser, codigo):
     f.sprint, f.codigo = 1, codigo
-    f.capitulo(
-        "Sprint 1 · REST, MVC, Lamport e JWT",
-        [
-            "Três processos FastAPI. Conta → agência responsável: id % 3.",
-            "Operações bancárias, frontend web e histórico por conta.",
-            "Transferência remota por HTTP e ordenação lógica por Lamport.",
-        ],
-        "Executamos a versão 21cfea6 da Sprint 1. As próximas sprints evoluem este código e mudam o transporte e o relógio.",
-    )
-    f.codigo_frame(
-        "Arquitetura · frontend, controladores e estado",
-        "O frontend chama a API REST. criar_aplicacao compõe autenticação, controladores e estado isolado da agência. Não há banco de dados persistente nesta versão.",
-        "agencia/app/main.py",
-        "def criar_aplicacao",
-        linhas=19,
-    )
     with Cluster(1, codigo, f.saida / "execucao/sprint1") as c:
         page = browser.new_page(viewport={"width": 1280, "height": 700}, locale="pt-BR")
         page.goto("http://localhost:4078")
+        entrar_web(page)
         f.tela(
             page,
             "Acesso web · login do operador",
@@ -384,13 +492,12 @@ def sprint1(f, browser, codigo):
             "agencia/app/auth.py",
             "def login",
         )
-        entrar_web(page)
         for id, nome in [(1, "Carla"), (2, "Diego"), (3, "Bruno")]:
             c.criar(id, nome)
         page.locator("summary").click()
-        page.locator("#criar-form [name=id]").fill("0")
-        page.locator("#criar-form [name=nomeAluno]").fill("Ana")
-        page.locator("#criar-form [name=saldoInicial]").fill("100.00")
+        web_preencher(page, "#criar-form [name=id]", "0")
+        web_preencher(page, "#criar-form [name=nomeAluno]", "Ana")
+        web_preencher(page, "#criar-form [name=saldoInicial]", "100.00")
         with page.expect_response(
             lambda r: r.url.endswith("/contas") and r.request.method == "POST"
         ) as resposta:
@@ -464,8 +571,8 @@ def sprint1(f, browser, codigo):
             page,
             "Conferência na agência de destino",
             "A consulta à Agência 1 confirma os R$ 130,00. O JWT interno entre agências usa chave e audiência distintas do token do operador.",
-            "agencia/app/auth.py",
-            "async def agencia_autenticada",
+            "agencia/app/controllers/contas_controller.py",
+            "async def consultar_conta",
         )
         consultar_web(page, 0)
         erro = operar_web(page, "sacar", "9999.00")
@@ -510,13 +617,6 @@ def sprint1(f, browser, codigo):
             "agencia/app/services/registro_eventos.py",
             "def historico",
         )
-        f.codigo_frame(
-            "Relógio Lamport · onde o contador avança",
-            "Evento local/envio incrementam o contador. Recepção aplica max(local, recebido) + 1. Lamport ordena eventos, mas não identifica concorrência sozinho.",
-            "agencia/app/services/relogio_lamport.py",
-            "def evento_local",
-            linhas=22,
-        )
         programa = (
             "from pathlib import Path; from agencia.mesclar_logs import carregar_eventos,imprimir_linha_do_tempo; "
             f"imprimir_linha_do_tempo(carregar_eventos(Path({str(c.dados)!r})))"
@@ -539,13 +639,9 @@ def sprint1(f, browser, codigo):
             "def carregar_eventos",
         )
         c.parar(1)
-        falha = c.api(
-            "POST",
-            0,
-            "/transferencias",
-            {"idOrigem": 0, "idDestino": 1, "valor": "10.00"},
-            502,
-        )
+        consultar_web(page, 0)
+        falha = operar_web(page, "remota", "10.00", 1)
+        assert falha["http"] == 502
         assert c.saldo(0) == "60.00"
         f.dados(
             "Falha remota HTTP · débito permanece",
@@ -576,6 +672,7 @@ def sprint1(f, browser, codigo):
             headers={"Authorization": "Bearer " + token},
         )
         assert exp.status_code == 401
+        page.evaluate("t => { token = t; }", token)
         f.dados(
             "Sessão expirada · JWT recusado",
             {
@@ -593,15 +690,6 @@ def sprint1(f, browser, codigo):
 
 def sprint2(f, browser, codigo):
     f.sprint, f.codigo = 2, codigo
-    f.capitulo(
-        "Sprint 2 · RabbitMQ, vetores e DLQ",
-        [
-            "Transferências remotas publicam créditos assíncronos em exchange topic.",
-            "Relógios vetoriais distinguem causalidade e concorrência.",
-            "Filas duráveis, ack manual e mensagens rejeitadas preservadas em DLQ.",
-        ],
-        "Executamos a versão 0d03c61. As operações locais, JWT, frontend e histórico da Sprint 1 continuam disponíveis.",
-    )
     with Cluster(2, codigo, f.saida / "execucao/sprint2") as c:
         c.criar(0, "Ana")
         c.criar(1, "Carla")
@@ -631,8 +719,8 @@ def sprint2(f, browser, codigo):
         )
         manager = browser.new_page(viewport={"width": 1280, "height": 700})
         manager.goto("http://127.0.0.1:15672")
-        manager.locator("[name=username]").fill("guest")
-        manager.locator("[name=password]").fill("guest")
+        web_preencher(manager, "[name=username]", "guest")
+        web_preencher(manager, "[name=password]", "guest")
         manager.locator("input[type=submit]").click()
         manager.wait_for_timeout(1000)
         manager.goto("http://127.0.0.1:15672/#/queues")
@@ -660,13 +748,6 @@ def sprint2(f, browser, codigo):
             "Filas duráveis e mensagens persistentes preservam a mensagem no broker. Isso não transforma as contas em memória em contas persistentes.",
             "agencia/app/services/mensageria.py",
             "declare_queue",
-        )
-        f.codigo_frame(
-            "Publicação confirmada e consumo com ack",
-            "O produtor usa confirmação do broker. O consumidor só confirma após processar; falhas rejeitadas seguem para a fila de não processadas.",
-            "agencia/app/services/mensageria.py",
-            "async def receber",
-            linhas=22,
         )
         eventos = []
         for arquivo in c.dados.glob("eventos-agencia-*.jsonl"):
@@ -811,15 +892,6 @@ def mobile_enviar(p, rotulo):
 
 def sprint3(f, browser, codigo, flutter_web):
     f.sprint, f.codigo = 3, codigo
-    f.capitulo(
-        "Sprint 3 · Bully e cliente Flutter",
-        [
-            "Eleição do maior ID acessível e atualização automática do painel.",
-            "Operações bancárias no cliente Flutter em viewport de celular.",
-            "Cache Hive, fila offline, sincronização e conflito HTTP 409.",
-        ],
-        "Cliente Flutter executado de verdade via Flutter Web. A captura em tela de celular não comprova instalação ou execução em Android.",
-    )
     with (
         Cluster(3, codigo, f.saida / "execucao/sprint3") as c,
         servidor_flutter(flutter_web),
@@ -971,13 +1043,6 @@ def sprint3(f, browser, codigo, flutter_web):
             mobile=True,
             duracao=16,
         )
-        f.codigo_frame(
-            "Adicional · heartbeat e timeout configuráveis",
-            "Este ensaio usa heartbeat de 1,5 s e timeout de 0,5 s. A validação aceita somente valores positivos e finitos; tempos menores aumentam a sensibilidade a atrasos.",
-            "agencia/app/services/eleicao.py",
-            "def _segundos_configurados",
-            linhas=22,
-        )
         # Freeze only this browser context's network. Backend and RabbitMQ remain live.
         mobile_operacao(p, "Consultar saldo")
         p.get_by_role("button", name="Consultar saldo", exact=True).click()
@@ -1086,13 +1151,6 @@ def sprint3(f, browser, codigo, flutter_web):
             "anterior = estado.sincronizacoes",
             duracao=18,
         )
-        f.codigo_frame(
-            "Cache e fila · persistência no dispositivo",
-            "Hive guarda saldo confirmado e operações pendentes juntos por conta. O JWT fica em memória; ao reiniciar o app é necessário autenticar online para retomar a fila.",
-            "app_mobile/lib/offline.dart",
-            "class BancoLocal",
-            linhas=21,
-        )
         contexto = subprocess.check_output(
             [
                 "node",
@@ -1112,15 +1170,6 @@ def sprint3(f, browser, codigo, flutter_web):
             duracao=16,
         )
         context.close()
-    f.capitulo(
-        "Encerramento · o que foi demonstrado",
-        [
-            "Sprint 1: REST, operações, JWT, histórico e Lamport.",
-            "Sprint 2: RabbitMQ real, relógios vetoriais, falha e DLQ.",
-            "Sprint 3: Bully, Flutter, operações, fila offline e conflito 409.",
-        ],
-        "Limites observados: contas em memória, sem replicação e sem transação distribuída ou compensação remota. Android nativo requer validação em aparelho/emulador.",
-    )
 
 
 def main():
@@ -1176,7 +1225,9 @@ def main():
         encoding="utf-8",
     )
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(executable_path=args.chromium, headless=True)
+        browser = NavegadorGravado(
+            pw.chromium.launch(executable_path=args.chromium, headless=True), filme
+        )
         try:
             if args.somente in (None, 1):
                 sprint1(filme, browser, args.sprint1.resolve())

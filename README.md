@@ -9,7 +9,7 @@ Debian/Ubuntu; a seção final traz as diferenças para Windows/PowerShell.
 
 O [guia de apresentação](docs/Apresentacao.md) prepara as versões isoladas, inicia
 as três agências com contas de demonstração e gera um vídeo sem áudio, com
-legendas, operações reais e referências ao código. Inclui o cliente Flutter em
+legendas, fluxos em movimento e o código correspondente ao lado. Inclui o cliente Flutter em
 viewport de celular, fila offline e conflito de sincronização.
 
 ## 1. O que apresentar em cada sprint
