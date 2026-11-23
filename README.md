@@ -436,12 +436,13 @@ inicie RabbitMQ e as três agências como na seção 3. Use `.env` dessa cópia.
 
 ```bash
 mkdir -p "$HOME/develop"
-git clone --branch stable --depth 1 https://github.com/flutter/flutter.git "$HOME/develop/flutter"
+git clone --branch 3.50.1 --depth 1 https://github.com/flutter/flutter.git "$HOME/develop/flutter"
 export PATH="$HOME/develop/flutter/bin:$PATH"
 flutter --version
 flutter doctor -v
 ```
 
+A versão fixada acima é Flutter **3.50.1**, com Dart **3.14.0**.
 Se Flutter já existe nesse caminho, não repita o clone. Adicione o `export PATH`
 ao seu `~/.bashrc` para reutilizar em novos terminais. O `pubspec.yaml` exige
 **Dart 3.13.7 ou superior compatível com a série 3**; `flutter --version` precisa
