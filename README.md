@@ -5,6 +5,13 @@ três agências e cliente **Flutter**. Este guia explica como instalar, executar
 apresentar cada sprint separadamente no Linux. Os comandos Bash abaixo são para
 Debian/Ubuntu; a seção final traz as diferenças para Windows/PowerShell.
 
+## Apresentação e vídeo das três sprints
+
+O [guia de apresentação](docs/Apresentacao.md) prepara as versões isoladas, inicia
+as três agências com contas de demonstração e gera um vídeo sem áudio, com
+legendas, operações reais e referências ao código. Inclui o cliente Flutter em
+viewport de celular, fila offline e conflito de sincronização.
+
 ## 1. O que apresentar em cada sprint
 
 | Sprint | Implementação | Demonstração | Versão a executar |
