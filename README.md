@@ -5,6 +5,26 @@ três agências e cliente **Flutter**. Este guia explica como instalar, executar
 apresentar cada sprint separadamente no Linux. Os comandos Bash abaixo são para
 Debian/Ubuntu; a seção final traz as diferenças para Windows/PowerShell.
 
+## Vídeos para apresentação
+
+Os quatro vídeos abaixo estão em **0,5×**, com o fluxo da aplicação, código ao lado e legendas:
+
+| Vídeo | Duração |
+| --- | --- |
+| [Completo — três sprints](videos/ICEIBank-3-sprints-0.5x.mp4) | 10min41s |
+| [Sprint 1](videos/ICEIBank-sprint-1-0.5x.mp4) | 3min44s |
+| [Sprint 2](videos/ICEIBank-sprint-2-0.5x.mp4) | 2min06s |
+| [Sprint 3](videos/ICEIBank-sprint-3-0.5x.mp4) | 4min51s |
+
+Baixe o MP4 para reproduzir no computador. Pausa, avanço, retorno e ajuste de velocidade dependem do reprodutor. Os arquivos já têm a velocidade reduzida: **1× no reprodutor corresponde a 0,5× da gravação; 2× recupera o ritmo original**. O cliente mobile mostrado é Flutter Web em tela de celular.
+
+## Apresentação e vídeo das três sprints
+
+O [guia de apresentação](docs/Apresentacao.md) prepara as versões isoladas, inicia
+as três agências com contas de demonstração e gera um vídeo sem áudio, com
+legendas, fluxos em movimento e o código correspondente ao lado. Inclui o cliente Flutter em
+viewport de celular, fila offline e conflito de sincronização.
+
 ## 1. O que apresentar em cada sprint
 
 | Sprint | Implementação | Demonstração | Versão a executar |
